@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <a href="{{ url_for('main.report', date=slip.slip_date) }}"
+       class="btn btn-link text-decoration-none">&larr; 返回</a>
+    <span class="navbar-brand mb-0 h5">编辑单据 #{{ slip.id }}</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4 mb-5">
+
+    <form method="post" action="{{ url_for('main.edit_slip', slip_id=slip.id) }}">
+
+        <!-- 桌号 -->
+        <div class="mb-3">
+            <label for="table" class="form-label">桌号</label>
+            <input
+                type="text"
+                class="form-control"
+                id="table"
+                name="table"
+                value="{{ slip.table_name or '' }}"
+                placeholder="例如：A3 / 5 等">
+        </div>
+
+        <!-- 人数 -->
+        <div class="mb-3">
+            <label for="people" class="form-label">人数</label>
+            <input
+                type="number"
+                class="form-control"
+                id="people"
+                name="people"
+                min="1"
+                value="{{ slip.people }}"
+                required>
+        </div>
+
+        <!-- 金额 -->
+        <div class="mb-3">
+            <label for="amount" class="form-label">金额（日元）</label>
+            <input
+                type="number"
+                class="form-control"
+                id="amount"
+                name="amount"
+                min="0"
+                value="{{ slip.amount }}"
+                required>
+        </div>
+
+        <p class="text-muted small">
+            创建时间：{{ slip.created_at }} / 日期：{{ slip.slip_date }}
+        </p>
+
+        <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                保存修改
+            </button>
+        </div>
+    </form>
+
+    <!-- 删除按钮（单独的 POST 表单） -->
+    <form method="post"
+          action="{{ url_for('main.delete_slip_route', slip_id=slip.id) }}"
+          class="mt-3">
+        <button type="submit"
+                class="btn btn-outline-danger w-100"
+                onclick="return confirm('确认要删除这张单据吗？');">
+            删除这张单据
+        </button>
+    </form>
+
+</div>
+
+{% endblock %}

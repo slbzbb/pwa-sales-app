@@ -3,11 +3,78 @@
 
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
     <span class="navbar-brand mb-0 h5">营业额记录</span>
-    <a href="{{ url_for('main.settings') }}" class="text-secondary fs-4">⚙</a>
+    <a href="{{ url_for('main.settings') }}"
+       class="text-secondary fs-4"
+       data-transition="tab">⚙</a>
 </nav>
 
 <div class="container mt-4">
 
+    <!-- 今日担当时间段 -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">今日负责时间段</h6>
+
+            <!-- 已登记的时间段列表 -->
+            {% if segments %}
+                <ul class="list-group mb-3">
+                    {% for seg in segments %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">{{ seg.start_time }} - {{ seg.end_time }}</span>
+                            <span class="ms-2">{{ seg.staff_name }}</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="small text-muted">
+                    还没有添加今天的负责时间段，可以在下面新增。
+                </p>
+            {% endif %}
+
+            <!-- 新增时间段表单 -->
+            <form method="post" action="{{ url_for('main.add_today_segment') }}">
+                <div class="row g-2 align-items-end">
+                    <div class="col-4">
+                        <label for="start_time" class="form-label small text-muted">开始</label>
+                        <input
+                            type="time"
+                            class="form-control"
+                            id="start_time"
+                            name="start_time"
+                            required>
+                    </div>
+                    <div class="col-4">
+                        <label for="end_time" class="form-label small text-muted">结束</label>
+                        <input
+                            type="time"
+                            class="form-control"
+                            id="end_time"
+                            name="end_time"
+                            required>
+                    </div>
+                    <div class="col-4">
+                        <label for="staff_name" class="form-label small text-muted">负责人</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="staff_name"
+                            name="staff_name"
+                            placeholder="例如：张三"
+                            required>
+                    </div>
+                </div>
+                <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                        添加今日时间段
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 今日总览卡片 -->
     <div class="card text-white mb-3" style="background-color:#2C3E50;">
         <div class="card-body">
             <h5 class="card-title">今日营业额</h5>
@@ -15,6 +82,7 @@
         </div>
     </div>
 
+    <!-- 三小卡片 -->
     <div class="row text-center mb-3">
         <div class="col">
             <div class="card p-2 shadow-sm">
@@ -36,35 +104,49 @@
         </div>
     </div>
 
+    <!-- 新建单据按钮 -->
     <div class="d-grid mb-4">
-        <a href="{{ url_for('main.input_slip') }}" class="btn btn-primary btn-lg fw-bold">
+        <a href="{{ url_for('main.input_slip') }}"
+           class="btn btn-primary btn-lg fw-bold"
+           data-transition="tab">
             ＋ 新建单据
         </a>
     </div>
 
+    <!-- 今日单据标题 + 日报入口 -->
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">今日单据</h5>
-        <a href="{{ url_for('main.report') }}" class="small text-decoration-none">
-            查看报表 &raquo;
+        <a href="{{ url_for('main.report') }}"
+           class="small text-decoration-none"
+           data-transition="tab">
+            查看今日日报 &raquo;
         </a>
     </div>
 
+    <!-- 单据列表 -->
     <ul class="list-group mb-5">
         {% for slip in slips %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>
-                <strong>#{{ slip.id }}</strong>
+                <span class="fw-bold">#{{ slip.id }}</span>
                 {% if slip.table_name %}
                     <span class="ms-2">桌 {{ slip.table_name }}</span>
                 {% endif %}
                 <span class="ms-2">{{ slip.people }}人</span>
                 <span class="ms-2">¥{{ slip.amount }}</span>
             </div>
-            <span class="text-muted small">{{ slip.time }}</span>
+            <div class="text-end">
+                <div class="text-muted small">{{ slip.time }}</div>
+                <a href="{{ url_for('main.edit_slip', slip_id=slip.id) }}"
+                   class="small text-decoration-none"
+                   data-transition="tab">
+                    编辑
+                </a>
+            </div>
         </li>
         {% else %}
         <li class="list-group-item text-muted">
-            还没有记录，请点击“新建单据”。
+            还没有记录，请点击「新建单据」开始记录。
         </li>
         {% endfor %}
     </ul>

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- 顶部导航栏 -->
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
     <a href="{{ url_for('main.index') }}" class="btn btn-link text-decoration-none">&larr; 返回</a>
     <span class="navbar-brand mb-0 h5">营业日报</span>
@@ -19,7 +18,7 @@
                 id="date"
                 name="date"
                 class="form-control"
-                value="{{ selected_date }}"
+                value="{{ slip_date }}"
             >
         </div>
         <div class="col-5">
@@ -29,14 +28,14 @@
         </div>
     </form>
 
-    <!-- 最近 7 天记录日期 -->
+    <!-- 最近有记录的日期 -->
     {% if recent_dates %}
     <div class="mb-3">
         <div class="small text-muted mb-1">最近有记录的日期：</div>
         <div class="d-flex flex-wrap gap-2">
             {% for d in recent_dates %}
                 <a href="{{ url_for('main.report', date=d) }}"
-                   class="badge rounded-pill {% if d == selected_date %}bg-primary{% else %}bg-secondary{% endif %}">
+                    class="badge rounded-pill {% if d == slip_date %}bg-primary{% else %}bg-secondary{% endif %}">
                     {{ d }}
                 </a>
             {% endfor %}
@@ -47,12 +46,12 @@
     <!-- 汇总卡片 -->
     <div class="card text-white mb-3" style="background-color:#2C3E50;">
         <div class="card-body">
-            <h6 class="card-subtitle mb-1">日报日期：{{ selected_date }}</h6>
+            <h6 class="card-subtitle mb-1">日报日期：{{ slip_date }}</h6>
             <h4 class="card-title mb-0">营业额合计：¥ {{ summary.total_sales }}</h4>
         </div>
     </div>
 
-    <!-- 三数据卡 -->
+    <!-- 三个小统计 -->
     <div class="row text-center mb-3">
         <div class="col">
             <div class="card p-2 shadow-sm">
@@ -87,7 +86,13 @@
                 <span class="ms-2">{{ slip.people }}人</span>
                 <span class="ms-2">¥{{ slip.amount }}</span>
             </div>
-            <span class="text-muted small">{{ slip.time }}</span>
+            <div class="text-end">
+                <div class="text-muted small">{{ slip.time }}</div>
+                <a href="{{ url_for('main.edit_slip', slip_id=slip.id) }}"
+                   class="small text-decoration-none">
+                    编辑
+                </a>
+            </div>
         </li>
         {% else %}
         <li class="list-group-item text-muted">

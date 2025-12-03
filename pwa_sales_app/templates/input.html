@@ -2,39 +2,67 @@
 {% block content %}
 
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
-    <a href="{{ url_for('main.index') }}" class="btn btn-link text-decoration-none">&larr; 返回</a>
+    <a href="{{ url_for('main.index') }}"
+       class="btn btn-link text-decoration-none"
+       data-transition="back">&larr; 返回</a>
     <span class="navbar-brand mb-0 h5">新建单据</span>
     <span></span>
 </nav>
 
 <div class="container mt-4 mb-5">
 
+    <p class="small mb-3 text-muted">
+        记录一桌客人的消费金额，系统会自动按日期统计到今日营业额中。
+    </p>
+
     <form method="post" action="{{ url_for('main.input_slip') }}">
 
         <!-- 桌号（可选） -->
         <div class="mb-3">
             <label for="table" class="form-label">桌号（可选）</label>
-            <input type="text" class="form-control" id="table" name="table" placeholder="例如：A3 / 5 等">
+            <input
+                type="text"
+                class="form-control"
+                id="table"
+                name="table"
+                placeholder="例如：A3 / 5 / 包厢1">
         </div>
 
-        <!-- 人数（必填） -->
+        <!-- 人数 -->
         <div class="mb-3">
-            <label for="people" class="form-label">人数（必填）</label>
-            <input type="number" class="form-control" id="people" name="people" min="1" required>
+            <label for="people" class="form-label">人数</label>
+            <input
+                type="number"
+                class="form-control"
+                id="people"
+                name="people"
+                min="1"
+                inputmode="numeric"
+                required
+                placeholder="请输入人数">
         </div>
 
-        <!-- 金额（必填） -->
+        <!-- 金额 -->
         <div class="mb-3">
-            <label for="amount" class="form-label">金额（必填，单位：日元）</label>
-            <input type="number" class="form-control" id="amount" name="amount" min="0" required>
+            <label for="amount" class="form-label">金额（日元）</label>
+            <input
+                type="number"
+                class="form-control"
+                id="amount"
+                name="amount"
+                min="0"
+                inputmode="numeric"
+                required
+                placeholder="例如：5000">
         </div>
 
-        <!-- 之后可以在这里加“备注 / 折扣 / 招待”等 -->
+        <p class="small text-muted">
+            日期与时间会自动使用当前时间，无需手动填写。
+        </p>
 
-        <!-- 底部固定按钮 -->
-        <div class="d-grid mt-4">
+        <div class="d-grid gap-2 mt-4">
             <button type="submit" class="btn btn-primary btn-lg fw-bold">
-                保存单据
+                保存并返回首页
             </button>
         </div>
     </form>

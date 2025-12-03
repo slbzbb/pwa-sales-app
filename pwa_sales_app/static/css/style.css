@@ -1,0 +1,233 @@
+/* ===== 基本：iOS 风格 & 暗色模式支持 ===== */
+
+:root {
+    color-scheme: light dark; /* 告诉系统支持两种模式 */
+}
+
+.app-body {
+    margin: 0;
+    padding: 0;
+    background-color: #000; /* 外面深色，像 iOS 背景 */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                 "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", sans-serif;
+}
+
+/* 手机壳：居中 + 最大宽度 = iPhone */
+.app-shell {
+    max-width: 430px;
+    min-height: 100vh;
+    margin: 0 auto;
+    background-color: #f2f2f7;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* 页面内容区域（上方，避免被 tabbar 遮住） */
+.app-content {
+    flex: 1;
+    padding-bottom: 60px; /* 预留 tabbar 高度 */
+}
+
+/* Container 调整手机内边距 */
+.app-shell .container {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+/* ===== 顶部导航栏：iOS 样式 ===== */
+
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    background-color: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+
+.navbar .navbar-brand {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* ===== 卡片、列表 ===== */
+
+.card {
+    border-radius: 16px;
+    border: none;
+}
+
+.card.shadow-sm {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.list-group {
+    background-color: transparent;
+}
+
+.list-group-item {
+    border: none;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* ===== 按钮：iOS 胶囊状 ===== */
+
+.btn-primary {
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #007aff, #0051c7);
+    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.35);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 4px 10px rgba(0, 122, 255, 0.4);
+}
+
+.btn-outline-danger {
+    border-radius: 999px;
+}
+
+/* 表单 */
+.form-control {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.form-control:focus {
+    border-color: #007aff;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+/* 小文字统一 */
+.small {
+    font-size: 12px;
+    color: #8e8e93;
+}
+
+/* ===== 底部 TabBar ===== */
+
+.app-tabbar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0));
+    background-color: rgba(248, 248, 250, 0.96);
+    backdrop-filter: blur(20px);
+    border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+
+.tab-item {
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+    color: #8e8e93;
+    font-size: 11px;
+    padding: 2px 0;
+}
+
+.tab-icon {
+    display: block;
+    font-size: 18px;
+}
+
+.tab-label {
+    display: block;
+    margin-top: 1px;
+}
+
+.tab-item.is-active {
+    color: #007aff;
+}
+
+/* ===== 页面切换动画 ===== */
+
+.page-transition {
+    animation: slide-in-right 0.25s ease-out;
+}
+
+@keyframes slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.page-slide-out-left {
+    animation: slide-out-left 0.20s ease-in;
+}
+
+@keyframes slide-out-left {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+}
+
+.page-slide-out-right {
+    animation: slide-out-right 0.20s ease-in;
+}
+
+@keyframes slide-out-right {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+}
+
+/* ===== 暗色模式（根据系统自动切换） ===== */
+
+@media (prefers-color-scheme: dark) {
+    .app-body {
+        background-color: #000;
+    }
+
+    .app-shell {
+        background-color: #000000;
+        box-shadow: none;
+    }
+
+    .navbar {
+        background-color: rgba(22, 22, 24, 0.96) !important;
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .card {
+        background-color: #1c1c1e;
+    }
+
+    .list-group-item {
+        background-color: #1c1c1e;
+    }
+
+    .app-tabbar {
+        background-color: rgba(22, 22, 24, 0.96);
+        border-top-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .small {
+        color: #8e8e93;
+    }
+}
