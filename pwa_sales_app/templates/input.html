@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <a href="{{ url_for('main.index') }}" class="btn btn-link text-decoration-none">&larr; 返回</a>
+    <span class="navbar-brand mb-0 h5">新建单据</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4 mb-5">
+
+    <form method="post" action="{{ url_for('main.input_slip') }}">
+
+        <!-- 桌号（可选） -->
+        <div class="mb-3">
+            <label for="table" class="form-label">桌号（可选）</label>
+            <input type="text" class="form-control" id="table" name="table" placeholder="例如：A3 / 5 等">
+        </div>
+
+        <!-- 人数（必填） -->
+        <div class="mb-3">
+            <label for="people" class="form-label">人数（必填）</label>
+            <input type="number" class="form-control" id="people" name="people" min="1" required>
+        </div>
+
+        <!-- 金额（必填） -->
+        <div class="mb-3">
+            <label for="amount" class="form-label">金额（必填，单位：日元）</label>
+            <input type="number" class="form-control" id="amount" name="amount" min="0" required>
+        </div>
+
+        <!-- 之后可以在这里加“备注 / 折扣 / 招待”等 -->
+
+        <!-- 底部固定按钮 -->
+        <div class="d-grid mt-4">
+            <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                保存单据
+            </button>
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}

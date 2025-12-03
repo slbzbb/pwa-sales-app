@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <a href="{{ url_for('main.index') }}" class="btn btn-link text-decoration-none">&larr; 返回</a>
+    <span class="navbar-brand mb-0 h5">设置</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4">
+    <p>设置页面还在规划中，以后可以配置：</p>
+    <ul>
+        <li>店铺名称</li>
+        <li>税率</li>
+        <li>数据备份 / 恢复</li>
+    </ul>
+</div>
+
+{% endblock %}

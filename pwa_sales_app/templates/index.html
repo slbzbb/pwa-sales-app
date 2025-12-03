@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <span class="navbar-brand mb-0 h5">营业额记录</span>
+    <a href="{{ url_for('main.settings') }}" class="text-secondary fs-4">⚙</a>
+</nav>
+
+<div class="container mt-4">
+
+    <div class="card text-white mb-3" style="background-color:#2C3E50;">
+        <div class="card-body">
+            <h5 class="card-title">今日营业额</h5>
+            <h2 class="fw-bold">¥ {{ summary.total_sales }}</h2>
+        </div>
+    </div>
+
+    <div class="row text-center mb-3">
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">客数</div>
+                <div class="fs-5 fw-bold">{{ summary.total_customers }} 人</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">桌数</div>
+                <div class="fs-5 fw-bold">{{ summary.total_tables }} 桌</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">客单价</div>
+                <div class="fs-5 fw-bold">¥ {{ summary.avg_per_customer }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-grid mb-4">
+        <a href="{{ url_for('main.input_slip') }}" class="btn btn-primary btn-lg fw-bold">
+            ＋ 新建单据
+        </a>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">今日单据</h5>
+        <a href="{{ url_for('main.report') }}" class="small text-decoration-none">
+            查看报表 &raquo;
+        </a>
+    </div>
+
+    <ul class="list-group mb-5">
+        {% for slip in slips %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <strong>#{{ slip.id }}</strong>
+                {% if slip.table_name %}
+                    <span class="ms-2">桌 {{ slip.table_name }}</span>
+                {% endif %}
+                <span class="ms-2">{{ slip.people }}人</span>
+                <span class="ms-2">¥{{ slip.amount }}</span>
+            </div>
+            <span class="text-muted small">{{ slip.time }}</span>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">
+            还没有记录，请点击“新建单据”。
+        </li>
+        {% endfor %}
+    </ul>
+
+</div>
+
+{% endblock %}

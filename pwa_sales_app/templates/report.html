@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- 顶部导航栏 -->
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <a href="{{ url_for('main.index') }}" class="btn btn-link text-decoration-none">&larr; 返回</a>
+    <span class="navbar-brand mb-0 h5">营业日报</span>
+    <span></span>
+</nav>
+
+<div class="container mt-3 mb-5">
+
+    <!-- 日期选择 -->
+    <form class="row g-2 align-items-end mb-3" method="get" action="{{ url_for('main.report') }}">
+        <div class="col-7">
+            <label for="date" class="form-label">选择日期</label>
+            <input
+                type="date"
+                id="date"
+                name="date"
+                class="form-control"
+                value="{{ selected_date }}"
+            >
+        </div>
+        <div class="col-5">
+            <button type="submit" class="btn btn-primary w-100">
+                显示日报
+            </button>
+        </div>
+    </form>
+
+    <!-- 最近 7 天记录日期 -->
+    {% if recent_dates %}
+    <div class="mb-3">
+        <div class="small text-muted mb-1">最近有记录的日期：</div>
+        <div class="d-flex flex-wrap gap-2">
+            {% for d in recent_dates %}
+                <a href="{{ url_for('main.report', date=d) }}"
+                   class="badge rounded-pill {% if d == selected_date %}bg-primary{% else %}bg-secondary{% endif %}">
+                    {{ d }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 汇总卡片 -->
+    <div class="card text-white mb-3" style="background-color:#2C3E50;">
+        <div class="card-body">
+            <h6 class="card-subtitle mb-1">日报日期：{{ selected_date }}</h6>
+            <h4 class="card-title mb-0">营业额合计：¥ {{ summary.total_sales }}</h4>
+        </div>
+    </div>
+
+    <!-- 三数据卡 -->
+    <div class="row text-center mb-3">
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">客数</div>
+                <div class="fs-5 fw-bold">{{ summary.total_customers }} 人</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">桌数</div>
+                <div class="fs-5 fw-bold">{{ summary.total_tables }} 桌</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">客单价</div>
+                <div class="fs-5 fw-bold">¥ {{ summary.avg_per_customer }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单据列表 -->
+    <h6 class="mb-2">当日单据</h6>
+    <ul class="list-group mb-5">
+        {% for slip in slips %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-bold">#{{ slip.id }}</span>
+                {% if slip.table_name %}
+                    <span class="ms-2">桌 {{ slip.table_name }}</span>
+                {% endif %}
+                <span class="ms-2">{{ slip.people }}人</span>
+                <span class="ms-2">¥{{ slip.amount }}</span>
+            </div>
+            <span class="text-muted small">{{ slip.time }}</span>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">
+            该日期暂无记录。
+        </li>
+        {% endfor %}
+    </ul>
+
+</div>
+
+{% endblock %}
