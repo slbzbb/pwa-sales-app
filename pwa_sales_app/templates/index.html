@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- 顶部导航栏 -->
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
     <span class="navbar-brand mb-0 h5">营业额记录</span>
     <a href="{{ url_for('main.settings') }}"
@@ -9,9 +10,26 @@
 </nav>
 
 <div class="container mt-4">
-<!-- ================================================================ -->
-<!-- ================================================================ -->
-    <!-- 今日担当时间段 -->
+
+    <!-- 营业日选择 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="small text-muted">营业日</div>
+        <form method="get"
+              action="{{ url_for('main.index') }}"
+              class="d-flex align-items-center">
+            <input
+                type="date"
+                name="date"
+                class="form-control form-control-sm"
+                value="{{ business_date }}">
+            <button type="submit"
+                    class="btn btn-outline-secondary btn-sm ms-2">
+                切换
+            </button>
+        </form>
+    </div>
+
+    <!-- 今日负责时间段 -->
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">今日负责时间段</h6>
@@ -28,13 +46,16 @@
                     {% endfor %}
                 </ul>
             {% else %}
-                <p class="small text-muted">
+                <p class="small text-muted mb-3">
                     还没有添加今天的负责时间段，可以在下面新增。
                 </p>
             {% endif %}
 
             <!-- 新增时间段表单 -->
             <form method="post" action="{{ url_for('main.add_today_segment') }}">
+                <!-- 传递营业日 -->
+                <input type="hidden" name="business_date" value="{{ business_date }}">
+
                 <div class="row g-2 align-items-end">
                     <div class="col-4">
                         <label for="start_time" class="form-label small text-muted">开始</label>
@@ -73,8 +94,7 @@
             </form>
         </div>
     </div>
-<!-- ================================================================ -->
-<!-- ================================================================ -->
+
     <!-- 今日总览卡片 -->
     <div class="card text-white mb-3" style="background-color:#2C3E50;">
         <div class="card-body">
@@ -83,7 +103,7 @@
         </div>
     </div>
 
-    <!-- 三小卡片 -->
+    <!-- 三小卡片：客数 / 桌数 / 客单价 -->
     <div class="row text-center mb-3">
         <div class="col">
             <div class="card p-2 shadow-sm">
@@ -123,7 +143,7 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="card-subtitle text-muted mb-0">今日食物贩卖</h6>
-                <a href="{{ url_for('main.edit_food_sales') }}"
+                <a href="{{ url_for('main.edit_food_sales', date=business_date) }}"
                    class="small text-decoration-none"
                    data-transition="tab">
                     编辑 &raquo;
@@ -143,7 +163,7 @@
 
     <!-- 新建单据按钮 -->
     <div class="d-grid mb-4">
-        <a href="{{ url_for('main.input_slip') }}"
+        <a href="{{ url_for('main.input_slip', date=business_date) }}"
            class="btn btn-primary btn-lg fw-bold"
            data-transition="tab">
             ＋ 新建单据
@@ -153,7 +173,7 @@
     <!-- 今日单据标题 + 日报入口 -->
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">今日单据</h5>
-        <a href="{{ url_for('main.report') }}"
+        <a href="{{ url_for('main.report', date=business_date) }}"
            class="small text-decoration-none"
            data-transition="tab">
             查看今日日报 &raquo;
@@ -171,6 +191,8 @@
                 {% endif %}
                 <span class="ms-2">{{ slip.people }}人</span>
                 <span class="ms-2">¥{{ slip.amount }}</span>
+
+                <!-- 支付方式标签（简写） -->
                 <span class="ms-2 small text-muted">
                     {% if slip.payment_method == 'cash' %}现金{% endif %}
                     {% if slip.payment_method == 'credit' %}クレカ{% endif %}

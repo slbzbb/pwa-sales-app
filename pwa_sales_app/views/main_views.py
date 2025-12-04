@@ -1,5 +1,5 @@
 # views/main_views.py
-from datetime import datetime, date
+from datetime import datetime, time, timedelta
 from typing import Dict, List
 
 from flask import (
@@ -26,7 +26,9 @@ from database.db import (
 
 main_bp = Blueprint("main", __name__)
 
-# 食物品项定义
+# ---------------------------
+# 食物列表
+# ---------------------------
 FOOD_ITEMS: Dict[str, str] = {
     "steak": "牛排",
     "beef_cube": "牛肉粒",
@@ -36,62 +38,84 @@ FOOD_ITEMS: Dict[str, str] = {
     "shrimp": "虾",
 }
 
+# ---------------------------
+# 营业日逻辑（默认 + 可覆盖）
+# ---------------------------
+def get_default_business_date() -> str:
+    """
+    默认营业日：
+    - 凌晨 00:00 - 05:00 → 算昨天
+    - 其他时间 → 算今天
+    """
+    now = datetime.now()
+    if now.time() < time(5, 0):
+        biz = now.date() - timedelta(days=1)
+    else:
+        biz = now.date()
+    return biz.strftime("%Y-%m-%d")
 
+
+def get_business_date_from_request() -> str:
+    """
+    优先使用用户选择的营业日。
+    POST: form['business_date']
+    GET : args['date']
+    """
+    form_date = request.form.get("business_date")
+    query_date = request.args.get("date")
+
+    if form_date:
+        return form_date
+    if query_date:
+        return query_date
+    return get_default_business_date()
+
+# ---------------------------
+# 集计相关
+# ---------------------------
 def calculate_summary(slips: List[Dict]) -> Dict[str, int]:
-    """
-    slips のリストから集計値を計算する（売上・客数・卓数・客単価）
-    """
-    total_sales = sum(slip["amount"] for slip in slips)
-    total_customers = sum(slip["people"] for slip in slips)
+    total_sales = sum(s["amount"] for s in slips)
+    total_customers = sum(s["people"] for s in slips)
     total_tables = len(slips)
 
-    avg_per_customer = (
-        int(total_sales / total_customers) if total_customers > 0 else 0
-    )
+    avg_per_customer = int(total_sales / total_customers) if total_customers else 0
 
-    summary = {
+    return {
         "total_sales": total_sales,
         "total_customers": total_customers,
         "total_tables": total_tables,
         "avg_per_customer": avg_per_customer,
     }
-    return summary
 
 
 def calculate_payment_totals(slips: List[Dict]) -> Dict[str, int]:
-    """
-    支払い方法ごとの売上合計を計算する。
-    """
     totals: Dict[str, int] = {}
-
-    for slip in slips:
-        method = slip.get("payment_method", "cash")
-        amount = slip.get("amount", 0)
+    for s in slips:
+        method = s.get("payment_method", "cash")
+        amount = s.get("amount", 0)
         totals[method] = totals.get(method, 0) + amount
-
     return totals
 
-
-# -----------------------------
-# ① 首页（今天的 Dashboard）
-# -----------------------------
+# ---------------------------
+# ① 首页 Dashboard（按营业日显示）
+# ---------------------------
 @main_bp.route("/")
 def index():
-    today_str = date.today().strftime("%Y-%m-%d")
+    # 当前营业日：URL ?date= 优先，其次默认规则
+    business_date = request.args.get("date") or get_default_business_date()
 
-    slips = get_slips_by_date(today_str)
+    slips = get_slips_by_date(business_date)
+
+    # 提取时间 "YYYY-MM-DD HH:MM" → "HH:MM"
+    for s in slips:
+        s["time"] = s["created_at"][11:16]
+
     summary = calculate_summary(slips)
 
-    # created_at → HH:MM
-    for slip in slips:
-        created_at: str = slip["created_at"]
-        slip["time"] = created_at[11:16]
+    # 该营业日内的负责人时间段
+    segments = get_staff_segments_by_date(business_date)
 
-    # 今日の担当時間帯
-    segments = get_staff_segments_by_date(today_str)
-
-    # 支払い方法ごとの集計
-    payment_totals = calculate_payment_totals(slips)
+    # 支付方式统计
     payment_labels = {
         "cash": "现金",
         "credit": "クレジットカード",
@@ -99,23 +123,16 @@ def index():
         "paypay": "PayPay",
         "alipay": "支付宝",
     }
+    payment_totals = calculate_payment_totals(slips)
     payment_summary = [
-        {
-            "key": key,
-            "label": label,
-            "amount": payment_totals.get(key, 0),
-        }
-        for key, label in payment_labels.items()
+        {"key": k, "label": v, "amount": payment_totals.get(k, 0)}
+        for k, v in payment_labels.items()
     ]
 
-    # 今日食物贩卖统计
-    food_counts = get_food_sales_by_date(today_str)
+    # 食物统计
+    food_counts = get_food_sales_by_date(business_date)
     food_items = [
-        {
-            "key": key,
-            "label": label,
-            "quantity": food_counts.get(key, 0),
-        }
+        {"key": key, "label": label, "quantity": food_counts.get(key, 0)}
         for key, label in FOOD_ITEMS.items()
     ]
 
@@ -126,52 +143,52 @@ def index():
         segments=segments,
         payment_summary=payment_summary,
         food_items=food_items,
+        business_date=business_date,
         active_tab="home",
     )
 
-
-# -----------------------------
-# ② 今日の担当時間帯を追加
-# -----------------------------
+# ---------------------------
+# ② 新增“今日负责时间段”（按营业日）
+# ---------------------------
 @main_bp.route("/segments/today", methods=["POST"])
 def add_today_segment():
     """
-    ホーム画面の「今日の担当時間帯」フォームから送信される。
-    例: 18:00-21:00 张三
+    首页「今日负责时间段」表单提交。
     """
+    business_date = get_business_date_from_request()
+
     start_time = request.form.get("start_time", "").strip()
     end_time = request.form.get("end_time", "").strip()
     staff_name = request.form.get("staff_name", "").strip()
 
+    # 简单防呆：有任何一项为空就直接返回首页
     if not (start_time and end_time and staff_name):
-        return redirect(url_for("main.index"))
+        return redirect(url_for("main.index", date=business_date))
 
-    today_str = date.today().strftime("%Y-%m-%d")
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     insert_staff_segment(
-        slip_date=today_str,
+        slip_date=business_date,
         start_time=start_time,
         end_time=end_time,
         staff_name=staff_name,
-        created_at=now_str,
+        created_at=now,
     )
 
-    return redirect(url_for("main.index"))
+    return redirect(url_for("main.index", date=business_date))
 
-
-# -----------------------------
-# ③ 新建单据 input
-# -----------------------------
+# ---------------------------
+# ③ 新建单据
+# ---------------------------
 @main_bp.route("/input", methods=["GET", "POST"])
 def input_slip():
     if request.method == "POST":
-        table_raw = request.form.get("table", "").strip()
-        people_raw = request.form.get("people", "").strip()
-        amount_raw = request.form.get("amount", "").strip()
-        payment_method = request.form.get("payment_method", "cash")
+        business_date = get_business_date_from_request()
 
-        table_name = table_raw or None
+        table_name = request.form.get("table", "").strip() or None
+        people_raw = request.form.get("people", "0").strip()
+        amount_raw = request.form.get("amount", "0").strip()
+        payment_method = request.form.get("payment_method", "cash")
 
         try:
             people = int(people_raw)
@@ -183,43 +200,40 @@ def input_slip():
         except ValueError:
             amount = 0
 
-        today_str = date.today().strftime("%Y-%m-%d")
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         insert_slip(
-            slip_date=today_str,
+            slip_date=business_date,
             table_name=table_name,
             people=people,
             amount=amount,
-            created_at=now_str,
+            created_at=now,
             payment_method=payment_method,
         )
 
-        return redirect(url_for("main.index"))
+        return redirect(url_for("main.index", date=business_date))
 
-    return render_template("input.html", active_tab="input")
+    business_date = request.args.get("date") or get_default_business_date()
+    return render_template("input.html", business_date=business_date, active_tab="input")
 
-
-# -----------------------------
-# ④ 营业日报 report
-# -----------------------------
+# ---------------------------
+# ④ 营业日报（报告页面）
+# ---------------------------
 @main_bp.route("/report")
 def report():
-    # URL 参数 date=YYYY-MM-DD
-    query_date = request.args.get("date")
-
-    if query_date:
-        slip_date = query_date
-    else:
-        slip_date = date.today().strftime("%Y-%m-%d")
+    """
+    指定营业日的日报：
+    - URL /report?date=YYYY-MM-DD
+    - 如果没给 date，就用默认营业日
+    """
+    slip_date = request.args.get("date") or get_default_business_date()
 
     slips = get_slips_by_date(slip_date)
+
+    for s in slips:
+        s["time"] = s["created_at"][11:16]
+
     summary = calculate_summary(slips)
-
-    for slip in slips:
-        created_at: str = slip["created_at"]
-        slip["time"] = created_at[11:16]
-
     recent_dates = get_recent_dates()
 
     return render_template(
@@ -231,10 +245,9 @@ def report():
         active_tab="report",
     )
 
-
-# -----------------------------
-# ⑤ 编辑单据 edit
-# -----------------------------
+# ---------------------------
+# ⑤ 编辑单据（从日报/首页进入）
+# ---------------------------
 @main_bp.route("/slip/<int:slip_id>/edit", methods=["GET", "POST"])
 def edit_slip(slip_id: int):
     slip = get_slip_by_id(slip_id)
@@ -244,11 +257,10 @@ def edit_slip(slip_id: int):
     slip_date = slip["slip_date"]
 
     if request.method == "POST":
-        table_raw = request.form.get("table", "").strip()
-        people_raw = request.form.get("people", "").strip()
-        amount_raw = request.form.get("amount", "").strip()
+        table_name = request.form.get("table", "").strip() or None
+        people_raw = request.form.get("people", "0").strip()
+        amount_raw = request.form.get("amount", "0").strip()
 
-        table_name = table_raw or None
         try:
             people = int(people_raw)
         except ValueError:
@@ -268,12 +280,15 @@ def edit_slip(slip_id: int):
 
         return redirect(url_for("main.report", date=slip_date))
 
-    return render_template("edit.html", slip=slip, active_tab="report")
+    return render_template(
+        "edit.html",
+        slip=slip,
+        active_tab="report",
+    )
 
-
-# -----------------------------
-# ⑥ 删除单据 delete
-# -----------------------------
+# ---------------------------
+# ⑥ 删除单据
+# ---------------------------
 @main_bp.route("/slip/<int:slip_id>/delete", methods=["POST"])
 def delete_slip_route(slip_id: int):
     slip = get_slip_by_id(slip_id)
@@ -285,19 +300,15 @@ def delete_slip_route(slip_id: int):
 
     return redirect(url_for("main.report", date=slip_date))
 
-
-# -----------------------------
-# ⑦ 今日食物贩卖编辑页面
-# -----------------------------
+# ---------------------------
+# ⑦ 当天食物数量修改（按营业日）
+# ---------------------------
 @main_bp.route("/food", methods=["GET", "POST"])
 def edit_food_sales():
-    """
-    今日の食物贩卖数をまとめて入力・保存する画面。
-    """
-    today_str = date.today().strftime("%Y-%m-%d")
-
     if request.method == "POST":
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        business_date = get_business_date_from_request()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
         for key in FOOD_ITEMS.keys():
             raw = request.form.get(key, "").strip()
             try:
@@ -306,35 +317,32 @@ def edit_food_sales():
                 qty = 0
 
             upsert_food_sale(
-                slip_date=today_str,
+                slip_date=business_date,
                 item_key=key,
                 quantity=qty,
-                updated_at=now_str,
+                updated_at=now,
             )
 
-        return redirect(url_for("main.index"))
+        return redirect(url_for("main.index", date=business_date))
 
-    # GET: 读取当前数据，填到表单里
-    food_counts = get_food_sales_by_date(today_str)
+    business_date = request.args.get("date") or get_default_business_date()
+
+    food_counts = get_food_sales_by_date(business_date)
     items = [
-        {
-            "key": key,
-            "label": label,
-            "quantity": food_counts.get(key, 0),
-        }
+        {"key": key, "label": label, "quantity": food_counts.get(key, 0)}
         for key, label in FOOD_ITEMS.items()
     ]
 
     return render_template(
         "food.html",
         items=items,
+        business_date=business_date,
         active_tab="home",
     )
 
-
-# -----------------------------
-# ⑧ 设置页面
-# -----------------------------
+# ---------------------------
+# ⑧ 设置页
+# ---------------------------
 @main_bp.route("/settings")
 def settings():
     return render_template("settings.html", active_tab="settings")
