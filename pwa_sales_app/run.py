@@ -26,6 +26,6 @@ if __name__ == "__main__":
     app = create_app()
     app.run(
         host="0.0.0.0",
-        port=5001,        # 本地端口，你可以改为 5001 等
+        port=5002,        # 本地端口，你可以改为 5001 等
         debug=True
     )

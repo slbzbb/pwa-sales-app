@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <a href="{{ url_for('main.index') }}"
+       class="btn btn-link text-decoration-none"
+       data-transition="back">&larr; 返回</a>
+    <span class="navbar-brand mb-0 h5">今日食物统计</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4 mb-5">
+
+    <p class="small text-muted mb-3">
+        请输入今天各个品项的销售份数，保存后会显示在首页「今日食物贩卖」中。
+    </p>
+
+    <form method="post" action="{{ url_for('main.edit_food_sales') }}">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                {% for item in items %}
+                <div class="d-flex align-items-center mb-3">
+                    <div class="flex-grow-1">
+                        <strong>{{ item.label }}</strong>
+                    </div>
+                    <div style="width: 90px;">
+                        <input
+                            type="number"
+                            class="form-control text-end"
+                            name="{{ item.key }}"
+                            min="0"
+                            inputmode="numeric"
+                            value="{{ item.quantity }}">
+                    </div>
+                    <span class="ms-1 small text-muted">份</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                保存今日食物统计
+            </button>
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}

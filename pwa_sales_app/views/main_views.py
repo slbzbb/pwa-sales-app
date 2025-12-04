@@ -20,9 +20,21 @@ from database.db import (
     delete_slip,
     get_staff_segments_by_date,
     insert_staff_segment,
+    get_food_sales_by_date,
+    upsert_food_sale,
 )
 
 main_bp = Blueprint("main", __name__)
+
+# 食物品项定义
+FOOD_ITEMS: Dict[str, str] = {
+    "steak": "牛排",
+    "beef_cube": "牛肉粒",
+    "beef_skewer": "牛肉串",
+    "burger": "汉堡",
+    "sandwich": "三明治",
+    "shrimp": "虾",
+}
 
 
 def calculate_summary(slips: List[Dict]) -> Dict[str, int]:
@@ -46,6 +58,20 @@ def calculate_summary(slips: List[Dict]) -> Dict[str, int]:
     return summary
 
 
+def calculate_payment_totals(slips: List[Dict]) -> Dict[str, int]:
+    """
+    支払い方法ごとの売上合計を計算する。
+    """
+    totals: Dict[str, int] = {}
+
+    for slip in slips:
+        method = slip.get("payment_method", "cash")
+        amount = slip.get("amount", 0)
+        totals[method] = totals.get(method, 0) + amount
+
+    return totals
+
+
 # -----------------------------
 # ① 首页（今天的 Dashboard）
 # -----------------------------
@@ -64,11 +90,42 @@ def index():
     # 今日の担当時間帯
     segments = get_staff_segments_by_date(today_str)
 
+    # 支払い方法ごとの集計
+    payment_totals = calculate_payment_totals(slips)
+    payment_labels = {
+        "cash": "现金",
+        "credit": "クレジットカード",
+        "wechat": "WeChat Pay",
+        "paypay": "PayPay",
+        "alipay": "支付宝",
+    }
+    payment_summary = [
+        {
+            "key": key,
+            "label": label,
+            "amount": payment_totals.get(key, 0),
+        }
+        for key, label in payment_labels.items()
+    ]
+
+    # 今日食物贩卖统计
+    food_counts = get_food_sales_by_date(today_str)
+    food_items = [
+        {
+            "key": key,
+            "label": label,
+            "quantity": food_counts.get(key, 0),
+        }
+        for key, label in FOOD_ITEMS.items()
+    ]
+
     return render_template(
         "index.html",
         summary=summary,
         slips=slips,
         segments=segments,
+        payment_summary=payment_summary,
+        food_items=food_items,
         active_tab="home",
     )
 
@@ -86,7 +143,6 @@ def add_today_segment():
     end_time = request.form.get("end_time", "").strip()
     staff_name = request.form.get("staff_name", "").strip()
 
-    # 简单校验：有一个为空就不保存
     if not (start_time and end_time and staff_name):
         return redirect(url_for("main.index"))
 
@@ -113,6 +169,7 @@ def input_slip():
         table_raw = request.form.get("table", "").strip()
         people_raw = request.form.get("people", "").strip()
         amount_raw = request.form.get("amount", "").strip()
+        payment_method = request.form.get("payment_method", "cash")
 
         table_name = table_raw or None
 
@@ -135,6 +192,7 @@ def input_slip():
             people=people,
             amount=amount,
             created_at=now_str,
+            payment_method=payment_method,
         )
 
         return redirect(url_for("main.index"))
@@ -229,7 +287,53 @@ def delete_slip_route(slip_id: int):
 
 
 # -----------------------------
-# ⑦ 设置页面
+# ⑦ 今日食物贩卖编辑页面
+# -----------------------------
+@main_bp.route("/food", methods=["GET", "POST"])
+def edit_food_sales():
+    """
+    今日の食物贩卖数をまとめて入力・保存する画面。
+    """
+    today_str = date.today().strftime("%Y-%m-%d")
+
+    if request.method == "POST":
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for key in FOOD_ITEMS.keys():
+            raw = request.form.get(key, "").strip()
+            try:
+                qty = int(raw) if raw else 0
+            except ValueError:
+                qty = 0
+
+            upsert_food_sale(
+                slip_date=today_str,
+                item_key=key,
+                quantity=qty,
+                updated_at=now_str,
+            )
+
+        return redirect(url_for("main.index"))
+
+    # GET: 读取当前数据，填到表单里
+    food_counts = get_food_sales_by_date(today_str)
+    items = [
+        {
+            "key": key,
+            "label": label,
+            "quantity": food_counts.get(key, 0),
+        }
+        for key, label in FOOD_ITEMS.items()
+    ]
+
+    return render_template(
+        "food.html",
+        items=items,
+        active_tab="home",
+    )
+
+
+# -----------------------------
+# ⑧ 设置页面
 # -----------------------------
 @main_bp.route("/settings")
 def settings():

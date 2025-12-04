@@ -56,6 +56,42 @@
                 placeholder="例如：5000">
         </div>
 
+        <!-- 支付方式（iOS segmented 风格） -->
+        <div class="mb-3">
+            <label class="form-label">支付方式</label>
+
+            <div class="pm-group">
+                <label class="pm-option">
+                    <input type="radio" name="payment_method" value="cash" checked>
+                    <span class="pm-chip">现金</span>
+                </label>
+
+                <label class="pm-option">
+                    <input type="radio" name="payment_method" value="credit">
+                    <span class="pm-chip">クレジットカード</span>
+                </label>
+
+                <label class="pm-option">
+                    <input type="radio" name="payment_method" value="wechat">
+                    <span class="pm-chip">WeChat Pay</span>
+                </label>
+
+                <label class="pm-option">
+                    <input type="radio" name="payment_method" value="paypay">
+                    <span class="pm-chip">PayPay</span>
+                </label>
+
+                <label class="pm-option pm-option-full">
+                    <input type="radio" name="payment_method" value="alipay">
+                    <span class="pm-chip">支付宝</span>
+                </label>
+            </div>
+
+            <p class="small text-muted mt-1">
+                默认是现金，如有需要请选择其他支付方式。
+            </p>
+        </div>
+
         <p class="small text-muted">
             日期与时间会自动使用当前时间，无需手动填写。
         </p>

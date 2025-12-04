@@ -231,3 +231,109 @@
         color: #8e8e93;
     }
 }
+
+/* ===== 支付方式 segmented-control（iOS 风格） ===== */
+
+.pm-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pm-option {
+    flex: 1 1 calc(50% - 4px); /* 上面四个半宽 */
+}
+
+.pm-option-full {
+    flex: 1 1 100%;            /* 支付宝单独一行 */
+}
+
+.pm-option input {
+    display: none;             /* 隐藏原生 radio */
+}
+
+.pm-chip {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background-color: #f2f2f7;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    font-size: 14px;
+    color: #111111;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+    transition: all 0.15s ease-out;
+}
+
+/* 选中状态：蓝色渐变 + 阴影，像 iOS 主按钮 */
+.pm-option input:checked + .pm-chip {
+    background: linear-gradient(135deg, #007aff, #0051c7);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.35);
+}
+
+/* 键盘导航时的可见 focus 状态 */
+.pm-option input:focus-visible + .pm-chip {
+    outline: 2px solid rgba(0, 122, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* 按下时轻微压下去的感觉 */
+.pm-option:active .pm-chip {
+    transform: translateY(1px);
+}
+
+/* ===== 支付方式 segmented-control（iOS 风格） ===== */
+
+.pm-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pm-option {
+    flex: 1 1 calc(50% - 4px); /* 上面四个半宽 */
+}
+
+.pm-option-full {
+    flex: 1 1 100%;            /* 支付宝单独一行 */
+}
+
+.pm-option input {
+    display: none;             /* 隐藏原生 radio */
+}
+
+.pm-chip {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background-color: #f2f2f7;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    font-size: 14px;
+    color: #111111;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+    transition: all 0.15s ease-out;
+}
+
+/* 选中状态：蓝色渐变 + 阴影，像 iOS 主按钮 */
+.pm-option input:checked + .pm-chip {
+    background: linear-gradient(135deg, #007aff, #0051c7);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.35);
+}
+
+/* 键盘导航时的可见 focus 状态 */
+.pm-option input:focus-visible + .pm-chip {
+    outline: 2px solid rgba(0, 122, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* 按下时轻微压下去的感觉 */
+.pm-option:active .pm-chip {
+    transform: translateY(1px);
+}
