@@ -1,21 +1,31 @@
-/* ===== 基本：iOS 风格 & 暗色模式支持 ===== */
+/* =====================================
+   基本：iOS 风格 + 暗色模式支持
+   ===================================== */
 
 :root {
     color-scheme: light dark; /* 告诉系统支持两种模式 */
+
+    /* 尺寸 & 圆角 */
+    --app-max-width: 430px;
+    --app-padding-x: 16px;
+
+    --radius-card-lg: 26px;
+    --radius-card-sm: 18px;
 }
 
+/* 整个页面外层背景（黑色，像 iOS 桌面） */
 .app-body {
     margin: 0;
     padding: 0;
-    background-color: #000; /* 外面深色，像 iOS 背景 */
+    background-color: #000;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
                  "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
                  "Microsoft YaHei", sans-serif;
 }
 
-/* 手机壳：居中 + 最大宽度 = iPhone */
+/* 手机壳：中间那一块“App 屏幕” */
 .app-shell {
-    max-width: 430px;
+    max-width: var(--app-max-width);
     min-height: 100vh;
     margin: 0 auto;
     background-color: #f2f2f7;
@@ -25,26 +35,30 @@
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* 页面内容区域（上方，避免被 tabbar 遮住） */
+/* 上方内容区域（预留 Tabbar 高度） */
 .app-content {
     flex: 1;
-    padding-bottom: 60px; /* 预留 tabbar 高度 */
+    padding-bottom: 72px; /* Tabbar 高度 + 一点空隙 */
 }
 
-/* Container 调整手机内边距 */
+/* Container 调整为 iOS 内边距 */
 .app-shell .container {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: var(--app-padding-x);
+    padding-right: var(--app-padding-x);
 }
 
-/* ===== 顶部导航栏：iOS 样式 ===== */
+/* =====================================
+   顶部导航栏：iOS 样式
+   ===================================== */
 
 .navbar {
     position: sticky;
     top: 0;
     z-index: 10;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    padding:
+        calc(env(safe-area-inset-top, 0px) + 6px)
+        var(--app-padding-x)
+        10px;
     background-color: rgba(255, 255, 255, 0.96) !important;
     backdrop-filter: blur(20px);
     border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
@@ -55,17 +69,28 @@
     font-weight: 600;
 }
 
-/* ===== 卡片、列表 ===== */
+/* =====================================
+   卡片 / 列表 / 表单
+   ===================================== */
 
+/* 所有卡片默认圆角 + 去边框 */
 .card {
     border-radius: 16px;
     border: none;
+    background-color: #ffffff;
 }
 
 .card.shadow-sm {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
+/* 今日营业额大卡片 */
+.card.text-white {
+    border-radius: var(--radius-card-lg);
+    padding: 16px 18px;
+}
+
+/* list-group 改成更像 iOS 列表 */
 .list-group {
     background-color: transparent;
 }
@@ -78,7 +103,26 @@
     padding-bottom: 10px;
 }
 
-/* ===== 按钮：iOS 胶囊状 ===== */
+/* 表单控件圆角 */
+.form-control {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.form-control:focus {
+    border-color: #007aff;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+/* 小号文字统一 */
+.small {
+    font-size: 12px;
+    color: #8e8e93;
+}
+
+/* =====================================
+   按钮：iOS 胶囊风
+   ===================================== */
 
 .btn-primary {
     border-radius: 999px;
@@ -92,28 +136,214 @@
     box-shadow: 0 4px 10px rgba(0, 122, 255, 0.4);
 }
 
-.btn-outline-danger {
+.btn-outline-danger,
+.btn-outline-primary {
     border-radius: 999px;
 }
 
-/* 表单 */
-.form-control {
-    border-radius: 12px;
+/* =====================================
+   支付方式 segmented control（输入页用）
+   ===================================== */
+
+.pm-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pm-option {
+    flex: 1 1 calc(50% - 4px); /* 前四个半宽 */
+}
+
+.pm-option-full {
+    flex: 1 1 100%;            /* 支付宝独占一行 */
+}
+
+.pm-option input {
+    display: none;             /* 隐藏原生 radio */
+}
+
+.pm-chip {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background-color: #f2f2f7;
     border: 1px solid rgba(0, 0, 0, 0.12);
+    font-size: 14px;
+    color: #111111;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+    transition: all 0.15s ease-out;
 }
 
-.form-control:focus {
-    border-color: #007aff;
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+/* 选中状态：蓝色渐变 + 投影 */
+.pm-option input:checked + .pm-chip {
+    background: linear-gradient(135deg, #007aff, #0051c7);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.35);
 }
 
-/* 小文字统一 */
-.small {
-    font-size: 12px;
+/* 键盘导航 focus 状态 */
+.pm-option input:focus-visible + .pm-chip {
+    outline: 2px solid rgba(0, 122, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* 按下轻微压下去 */
+.pm-option:active .pm-chip {
+    transform: translateY(1px);
+}
+
+/* =====================================
+   负责人时间段列表
+   ===================================== */
+
+.segment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+    padding: 6px 0;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+.segment-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.segment-time {
+    font-weight: 600;
+    font-size: 16px;
+    color: #111827;
+}
+
+.segment-name {
+    font-size: 15px;
+    color: #6b7280;
+}
+
+.segment-actions {
+    display: flex;
+    align-items: center;
+}
+
+/* iOS 风文字链接（编辑 / 设置 等） */
+.ios-link {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 13px;
     color: #8e8e93;
+    text-decoration: none;
 }
 
-/* ===== 底部 TabBar ===== */
+.ios-link:hover {
+    text-decoration: underline;
+}
+
+/* 删除：iOS 标准红 */
+.ios-link-destructive {
+    color: #ff3b30;
+}
+
+.ios-link-destructive,
+.ios-link-destructive:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* =====================================
+   今日食物贩卖列表
+   ===================================== */
+
+.food-card {
+    border: none;
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+.food-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 0.5px solid rgba(148, 163, 184, 0.3);
+}
+
+.food-row:last-child {
+    border-bottom: none;
+}
+
+.food-name {
+    font-size: 15px;
+    color: #111827;
+}
+
+.food-qty {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* =====================================
+   顶部三张统计卡片：Grid 布局
+   ===================================== */
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* 三列等宽 */
+    column-gap: 12px;   /* 卡片之间横向间距 */
+    row-gap: 0;
+}
+
+.metrics-card {
+    border-radius: 18px;
+    padding-top: 10px;
+    padding-bottom: 12px;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.04);
+    border: none;
+}
+
+/* =====================================
+   按支付方式统计：Grid 布局
+   ===================================== */
+
+.payment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 两列等宽 */
+    column-gap: 16px;  /* 左右间距 */
+    row-gap: 16px;     /* 上下间距 */
+}
+
+/* 支付方式卡片本体（iOS 风格） */
+.payment-card {
+    border-radius: 20px;
+    padding: 14px 18px;
+    border: none;
+    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
+}
+
+.payment-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.payment-amount {
+    font-weight: 600;
+    font-size: 18px;
+    color: #111827;
+}
+
+/* =====================================
+   底部 TabBar
+   ===================================== */
 
 .app-tabbar {
     position: sticky;
@@ -150,7 +380,9 @@
     color: #007aff;
 }
 
-/* ===== 页面切换动画 ===== */
+/* =====================================
+   页面切换动画（左右滑动）
+   ===================================== */
 
 .page-transition {
     animation: slide-in-right 0.25s ease-out;
@@ -197,7 +429,9 @@
     }
 }
 
-/* ===== 暗色模式（根据系统自动切换） ===== */
+/* =====================================
+   暗色模式（跟随系统）
+   ===================================== */
 
 @media (prefers-color-scheme: dark) {
     .app-body {
@@ -214,7 +448,10 @@
         border-bottom-color: rgba(255, 255, 255, 0.12);
     }
 
-    .card {
+    .card,
+    .payment-card,
+    .food-card,
+    .metrics-card {
         background-color: #1c1c1e;
     }
 
@@ -227,113 +464,22 @@
         border-top-color: rgba(255, 255, 255, 0.12);
     }
 
+    .payment-label,
+    .food-name,
+    .segment-name,
     .small {
         color: #8e8e93;
     }
+
+    .payment-amount,
+    .food-qty,
+    .segment-time {
+        color: #f9fafb;
+    }
 }
 
-/* ===== 支付方式 segmented-control（iOS 风格） ===== */
-
-.pm-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.pm-option {
-    flex: 1 1 calc(50% - 4px); /* 上面四个半宽 */
-}
-
-.pm-option-full {
-    flex: 1 1 100%;            /* 支付宝单独一行 */
-}
-
-.pm-option input {
-    display: none;             /* 隐藏原生 radio */
-}
-
-.pm-chip {
-    display: block;
-    width: 100%;
-    text-align: center;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background-color: #f2f2f7;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    font-size: 14px;
-    color: #111111;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
-    transition: all 0.15s ease-out;
-}
-
-/* 选中状态：蓝色渐变 + 阴影，像 iOS 主按钮 */
-.pm-option input:checked + .pm-chip {
-    background: linear-gradient(135deg, #007aff, #0051c7);
-    color: #ffffff;
-    border-color: transparent;
-    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.35);
-}
-
-/* 键盘导航时的可见 focus 状态 */
-.pm-option input:focus-visible + .pm-chip {
-    outline: 2px solid rgba(0, 122, 255, 0.5);
-    outline-offset: 2px;
-}
-
-/* 按下时轻微压下去的感觉 */
-.pm-option:active .pm-chip {
-    transform: translateY(1px);
-}
-
-/* ===== 支付方式 segmented-control（iOS 风格） ===== */
-
-.pm-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.pm-option {
-    flex: 1 1 calc(50% - 4px); /* 上面四个半宽 */
-}
-
-.pm-option-full {
-    flex: 1 1 100%;            /* 支付宝单独一行 */
-}
-
-.pm-option input {
-    display: none;             /* 隐藏原生 radio */
-}
-
-.pm-chip {
-    display: block;
-    width: 100%;
-    text-align: center;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background-color: #f2f2f7;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    font-size: 14px;
-    color: #111111;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
-    transition: all 0.15s ease-out;
-}
-
-/* 选中状态：蓝色渐变 + 阴影，像 iOS 主按钮 */
-.pm-option input:checked + .pm-chip {
-    background: linear-gradient(135deg, #007aff, #0051c7);
-    color: #ffffff;
-    border-color: transparent;
-    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.35);
-}
-
-/* 键盘导航时的可见 focus 状态 */
-.pm-option input:focus-visible + .pm-chip {
-    outline: 2px solid rgba(0, 122, 255, 0.5);
-    outline-offset: 2px;
-}
-
-/* 按下时轻微压下去的感觉 */
-.pm-option:active .pm-chip {
-    transform: translateY(1px);
+/* Performance 页：图表容器高度控制 */
+.chart-container {
+    position: relative;
+    height: 240px;  /* 你可以改成 220 / 260 看效果 */
 }

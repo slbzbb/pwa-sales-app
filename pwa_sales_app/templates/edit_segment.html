@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <a href="{{ url_for('main.index', date=segment.slip_date) }}"
+        class="btn btn-link text-decoration-none"
+        data-transition="back">&larr; 返回</a>
+    <span class="navbar-brand mb-0 h5">编辑负责时间段</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4 mb-5">
+    <p class="small text-muted">
+        营业日：<strong>{{ segment.slip_date }}</strong>
+    </p>
+
+    <form method="post"
+            action="{{ url_for('main.edit_segment', segment_id=segment.id) }}">
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">开始时间</label>
+            <input type="time"
+                    class="form-control"
+                    name="start_time"
+                    required
+                    value="{{ segment.start_time }}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">结束时间</label>
+            <input type="time"
+                    class="form-control"
+                    name="end_time"
+                    required
+                    value="{{ segment.end_time }}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">负责人</label>
+            <input type="text"
+                    class="form-control"
+                    name="staff_name"
+                    required
+                    value="{{ segment.staff_name }}">
+        </div>
+
+        <div class="d-grid gap-2 mt-4">
+            <button type="submit"
+                    class="btn btn-primary btn-lg fw-bold">
+                保存修改
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

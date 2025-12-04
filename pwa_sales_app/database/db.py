@@ -6,11 +6,10 @@ from typing import List, Dict, Any, Optional
 DB_PATH = Path(__file__).resolve().parent / "sales.db"
 
 
+# ===========================
+# 基础: 连接 & 初始化
+# ===========================
 def get_connection() -> sqlite3.Connection:
-    """
-    SQLite の Connection オブジェクトを返すヘルパー関数。
-    必ず row_factory を dict 風にしておく。
-    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -18,61 +17,51 @@ def get_connection() -> sqlite3.Connection:
 
 def init_db() -> None:
     """
-    アプリ起動時に1回だけ実行する用。
-    slips / staff_segments / daily_food_sales テーブルが無ければ作成する。
-    既存DBには payment_method カラムを追加する。
+    整个应用只需要执行一次（如在 run.py 启动时），
+    用来创建所有需要的表。
     """
     conn = get_connection()
     cur = conn.cursor()
 
-    # 伝票テーブル（支払い方法付き）
+    # 单据表
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS slips (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            slip_date TEXT NOT NULL,
-            table_name TEXT,
-            people INTEGER NOT NULL,
-            amount INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            payment_method TEXT NOT NULL DEFAULT 'cash'
+            slip_date TEXT NOT NULL,         -- 营业日: YYYY-MM-DD
+            table_name TEXT,                 -- 桌号
+            people INTEGER NOT NULL,         -- 人数
+            amount INTEGER NOT NULL,         -- 金额
+            payment_method TEXT,             -- 支付方式: cash / credit / wechat / paypay / alipay
+            created_at TEXT NOT NULL         -- 记录时间: YYYY-MM-DD HH:MM
         )
         """
     )
 
-    # 既存DBに対して payment_method カラムを追加（あればスルー）
-    try:
-        cur.execute(
-            "ALTER TABLE slips ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cash'"
-        )
-    except sqlite3.OperationalError:
-        # すでにカラムが存在する場合などは無視
-        pass
-
-    # 1日の中で複数の時間帯を担当する人を管理するテーブル
+    # 食物统计表
     cur.execute(
         """
-        CREATE TABLE IF NOT EXISTS staff_segments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            slip_date  TEXT NOT NULL,
-            start_time TEXT NOT NULL,   -- "HH:MM"
-            end_time   TEXT NOT NULL,   -- "HH:MM"
-            staff_name TEXT NOT NULL,
-            created_at TEXT NOT NULL
+        CREATE TABLE IF NOT EXISTS food_sales (
+            business_date TEXT PRIMARY KEY,  -- 营业日
+            steak INTEGER DEFAULT 0,
+            beef_cube INTEGER DEFAULT 0,
+            beef_skewer INTEGER DEFAULT 0,
+            burger INTEGER DEFAULT 0,
+            sandwich INTEGER DEFAULT 0,
+            shrimp INTEGER DEFAULT 0
         )
         """
     )
 
-    # 每日食物贩卖统计
+    # 负责人时间段表
     cur.execute(
         """
-        CREATE TABLE IF NOT EXISTS daily_food_sales (
+        CREATE TABLE IF NOT EXISTS segments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            slip_date  TEXT NOT NULL,   -- YYYY-MM-DD
-            item_key   TEXT NOT NULL,   -- "steak" 等
-            quantity   INTEGER NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE(slip_date, item_key)
+            business_date TEXT NOT NULL,
+            start_time TEXT NOT NULL,        -- HH:MM
+            end_time TEXT NOT NULL,          -- HH:MM
+            staff_name TEXT NOT NULL
         )
         """
     )
@@ -81,72 +70,98 @@ def init_db() -> None:
     conn.close()
 
 
-# ===== slips 関連 =====
-
-
+# ===========================
+# slips: 单据相关
+# ===========================
 def insert_slip(
     slip_date: str,
     table_name: Optional[str],
     people: int,
     amount: int,
-    created_at: str,
     payment_method: str,
+    created_at: str,
 ) -> None:
-    """
-    1件の伝票データを登録する。
-    """
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
-        INSERT INTO slips (slip_date, table_name, people, amount, created_at, payment_method)
+        INSERT INTO slips (slip_date, table_name, people, amount, payment_method, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (slip_date, table_name, people, amount, created_at, payment_method),
+        (slip_date, table_name, people, amount, payment_method, created_at),
     )
-
     conn.commit()
     conn.close()
 
 
-def get_slips_by_date(slip_date: str) -> List[Dict[str, Any]]:
-    """
-    指定した日付（YYYY-MM-DD）の伝票一覧を返す。
-    """
+def update_slip(
+    slip_id: int,
+    table_name: Optional[str],
+    people: int,
+    amount: int,
+    payment_method: str,
+) -> None:
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
-        SELECT id,
-               slip_date,
-               table_name,
-               people,
-               amount,
-               created_at,
-               payment_method
+        UPDATE slips
+        SET table_name = ?, people = ?, amount = ?, payment_method = ?
+        WHERE id = ?
+        """,
+        (table_name, people, amount, payment_method, slip_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_slip(slip_id: int) -> None:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM slips WHERE id = ?", (slip_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_slip(slip_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT *
+        FROM slips
+        WHERE id = ?
+        """,
+        (slip_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_slips_by_date(slip_date: str) -> List[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT *
         FROM slips
         WHERE slip_date = ?
         ORDER BY id ASC
         """,
         (slip_date,),
     )
-
     rows = cur.fetchall()
     conn.close()
-
-    return [dict(row) for row in rows]
+    return [dict(r) for r in rows]
 
 
 def get_recent_dates(limit: int = 7) -> List[str]:
     """
-    slipsテーブルから、直近の営業日（伝票のある日付）を新しい順に取得する。
-    例: ["2025-12-03", "2025-12-02", ...]
+    最近有单据的营业日（新的在前）
     """
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
         SELECT DISTINCT slip_date
@@ -156,183 +171,271 @@ def get_recent_dates(limit: int = 7) -> List[str]:
         """,
         (limit,),
     )
-
     rows = cur.fetchall()
     conn.close()
+    return [r["slip_date"] for r in rows]
 
-    return [row["slip_date"] for row in rows]
 
-
-def get_slip_by_id(slip_id: int) -> Optional[Dict[str, Any]]:
+def get_payment_summary_by_date(slip_date: str) -> List[Dict[str, Any]]:
     """
-    id で伝票1件を取得する。存在しなければ None。
+    某营业日的支付方式汇总 (用于首页“按支付方式统计”)
+    返回: [{'method': 'cash', 'label': '现金', 'amount': 1000}, ...]
     """
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
-        SELECT id,
-               slip_date,
-               table_name,
-               people,
-               amount,
-               created_at,
-               payment_method
+        SELECT payment_method, SUM(amount) AS total_amount
         FROM slips
-        WHERE id = ?
+        WHERE slip_date = ?
+        GROUP BY payment_method
         """,
-        (slip_id,),
+        (slip_date,),
     )
+    rows = cur.fetchall()
+    conn.close()
 
+    # 统一所有支付方式，没记录的用 0
+    label_map = {
+        "cash": "现金",
+        "credit": "クレジットカード",
+        "wechat": "WeChat Pay",
+        "paypay": "PayPay",
+        "alipay": "支付宝",
+    }
+    result_map = {r["payment_method"]: r["total_amount"] for r in rows}
+
+    result: List[Dict[str, Any]] = []
+    for key in ["cash", "credit", "wechat", "paypay", "alipay"]:
+        result.append(
+            {
+                "method": key,
+                "label": label_map[key],
+                "amount": int(result_map.get(key, 0) or 0),
+            }
+        )
+    return result
+
+
+# ===========================
+# food_sales: 食物贩卖
+# ===========================
+def get_food_sales(business_date: str) -> Dict[str, int]:
+    """
+    某一天的食物统计，没有记录时全部 0。
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT steak, beef_cube, beef_skewer, burger, sandwich, shrimp
+        FROM food_sales
+        WHERE business_date = ?
+        """,
+        (business_date,),
+    )
     row = cur.fetchone()
     conn.close()
 
-    if row is None:
-        return None
-    return dict(row)
+    if not row:
+        return {
+            "steak": 0,
+            "beef_cube": 0,
+            "beef_skewer": 0,
+            "burger": 0,
+            "sandwich": 0,
+            "shrimp": 0,
+        }
+
+    return {
+        "steak": row["steak"] or 0,
+        "beef_cube": row["beef_cube"] or 0,
+        "beef_skewer": row["beef_skewer"] or 0,
+        "burger": row["burger"] or 0,
+        "sandwich": row["sandwich"] or 0,
+        "shrimp": row["shrimp"] or 0,
+    }
 
 
-def update_slip(
-    slip_id: int,
-    table_name: Optional[str],
-    people: int,
-    amount: int,
+def upsert_food_sales(
+    business_date: str,
+    steak: int,
+    beef_cube: int,
+    beef_skewer: int,
+    burger: int,
+    sandwich: int,
+    shrimp: int,
 ) -> None:
     """
-    id 指定で table_name, people, amount を更新する。
-    日付や作成時間、支払い方法はそのまま。
+    有则更新，无则插入。
     """
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
-        UPDATE slips
-        SET table_name = ?, people = ?, amount = ?
+        INSERT INTO food_sales (
+            business_date, steak, beef_cube, beef_skewer, burger, sandwich, shrimp
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(business_date) DO UPDATE SET
+            steak = excluded.steak,
+            beef_cube = excluded.beef_cube,
+            beef_skewer = excluded.beef_skewer,
+            burger = excluded.burger,
+            sandwich = excluded.sandwich,
+            shrimp = excluded.shrimp
+        """,
+        (business_date, steak, beef_cube, beef_skewer, burger, sandwich, shrimp),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_food_totals_last_days(limit: int = 7) -> Dict[str, int]:
+    """
+    最近 limit 天内，各食物的累计总份数。
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+            SUM(steak)        AS steak,
+            SUM(beef_cube)    AS beef_cube,
+            SUM(beef_skewer)  AS beef_skewer,
+            SUM(burger)       AS burger,
+            SUM(sandwich)     AS sandwich,
+            SUM(shrimp)       AS shrimp
+        FROM food_sales
+        WHERE business_date IN (
+            SELECT business_date
+            FROM food_sales
+            ORDER BY business_date DESC
+            LIMIT ?
+        )
+        """,
+        (limit,),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return {
+            "steak": 0,
+            "beef_cube": 0,
+            "beef_skewer": 0,
+            "burger": 0,
+            "sandwich": 0,
+            "shrimp": 0,
+        }
+
+    return {
+        "steak": row["steak"] or 0,
+        "beef_cube": row["beef_cube"] or 0,
+        "beef_skewer": row["beef_skewer"] or 0,
+        "burger": row["burger"] or 0,
+        "sandwich": row["sandwich"] or 0,
+        "shrimp": row["shrimp"] or 0,
+    }
+
+
+# ===========================
+# segments: 负责人时间段
+# ===========================
+def insert_segment(business_date: str, start_time: str, end_time: str, staff_name: str) -> None:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO segments (business_date, start_time, end_time, staff_name)
+        VALUES (?, ?, ?, ?)
+        """,
+        (business_date, start_time, end_time, staff_name),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_segments_by_date(business_date: str) -> List[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, business_date, start_time, end_time, staff_name
+        FROM segments
+        WHERE business_date = ?
+        ORDER BY start_time ASC
+        """,
+        (business_date,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_segment(segment_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, business_date, start_time, end_time, staff_name
+        FROM segments
         WHERE id = ?
         """,
-        (table_name, people, amount, slip_id),
+        (segment_id,),
     )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
+
+def update_segment(segment_id: int, start_time: str, end_time: str, staff_name: str) -> None:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE segments
+        SET start_time = ?, end_time = ?, staff_name = ?
+        WHERE id = ?
+        """,
+        (start_time, end_time, staff_name, segment_id),
+    )
     conn.commit()
     conn.close()
 
 
-def delete_slip(slip_id: int) -> None:
-    """
-    id 指定で伝票を削除する。
-    """
+def delete_segment(segment_id: int) -> None:
     conn = get_connection()
     cur = conn.cursor()
-
-    cur.execute("DELETE FROM slips WHERE id = ?", (slip_id,))
-
+    cur.execute("DELETE FROM segments WHERE id = ?", (segment_id,))
     conn.commit()
     conn.close()
 
 
-# ===== 日内の担当時間帯（segments） =====
-
-
-def get_staff_segments_by_date(slip_date: str) -> List[Dict[str, Any]]:
+# ===========================
+# Performance: 趋势分析
+# ===========================
+def get_daily_sales_and_customers(limit: int = 7) -> List[Dict[str, Any]]:
     """
-    指定日の担当時間帯一覧を返す。
-    例: 18:00-21:00 张三 / 21:00-24:00 李四
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT id, slip_date, start_time, end_time, staff_name, created_at
-        FROM staff_segments
-        WHERE slip_date = ?
-        ORDER BY start_time ASC, id ASC
-        """,
-        (slip_date,),
-    )
-
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-
-def insert_staff_segment(
-    slip_date: str,
-    start_time: str,
-    end_time: str,
-    staff_name: str,
-    created_at: str,
-) -> None:
-    """
-    指定日の「担当時間帯」を1件登録する。
-    start_time / end_time は "HH:MM" 形式。
+    最近 limit 天 每日的营业额 & 客数。
+    返回时按日期升序（方便画折线图）。
     """
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
-        INSERT INTO staff_segments (slip_date, start_time, end_time, staff_name, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        SELECT slip_date,
+               SUM(amount) AS total_sales,
+               SUM(people) AS total_customers
+        FROM slips
+        GROUP BY slip_date
+        ORDER BY slip_date DESC
+        LIMIT ?
         """,
-        (slip_date, start_time, end_time, staff_name, created_at),
+        (limit,),
     )
-
-    conn.commit()
+    rows = [dict(r) for r in cur.fetchall()]
     conn.close()
 
-
-# ===== 每日食物贩卖统计 =====
-
-
-def get_food_sales_by_date(slip_date: str) -> Dict[str, int]:
-    """
-    指定日の食物贩卖数を item_key -> quantity の dict で返す。
-    例: {"steak": 10, "burger": 5}
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT item_key, quantity
-        FROM daily_food_sales
-        WHERE slip_date = ?
-        """,
-        (slip_date,),
-    )
-
-    rows = cur.fetchall()
-    conn.close()
-
-    return {row["item_key"]: row["quantity"] for row in rows}
-
-
-def upsert_food_sale(
-    slip_date: str,
-    item_key: str,
-    quantity: int,
-    updated_at: str,
-) -> None:
-    """
-    指定日の item_key の数量を登録 or 更新する。
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        INSERT INTO daily_food_sales (slip_date, item_key, quantity, updated_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(slip_date, item_key)
-        DO UPDATE SET
-            quantity  = excluded.quantity,
-            updated_at = excluded.updated_at
-        """,
-        (slip_date, item_key, quantity, updated_at),
-    )
-
-    conn.commit()
-    conn.close()
+    rows.reverse()
+    return rows

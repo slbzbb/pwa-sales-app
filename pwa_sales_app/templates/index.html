@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- 顶部导航栏 -->
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
     <span class="navbar-brand mb-0 h5">营业额记录</span>
     <a href="{{ url_for('main.settings') }}"
@@ -11,7 +10,6 @@
 
 <div class="container mt-4">
 
-    <!-- 营业日选择 -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="small text-muted">营业日</div>
         <form method="get"
@@ -29,7 +27,6 @@
         </form>
     </div>
 
-    <!-- 今日负责时间段 -->
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">今日负责时间段</h6>
@@ -37,10 +34,28 @@
             {% if segments %}
                 <ul class="list-group mb-3">
                     {% for seg in segments %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="fw-bold">{{ seg.start_time }} - {{ seg.end_time }}</span>
-                            <span class="ms-2">{{ seg.staff_name }}</span>
+                    <li class="list-group-item py-2 segment-row">
+                        <div class="segment-main">
+                            <span class="segment-time">{{ seg.start_time }} - {{ seg.end_time }}</span>
+                            <span class="segment-name">{{ seg.staff_name }}</span>
+                        </div>
+
+                        <div class="segment-actions">
+                            <a href="{{ url_for('main.edit_segment_view', segment_id=seg.id) }}"
+                               class="ios-link me-3"
+                               data-transition="tab">
+                                编辑
+                            </a>
+
+                            <form method="post"
+                                  action="{{ url_for('main.delete_segment_view', segment_id=seg.id) }}"
+                                  class="d-inline">
+                                <button type="submit"
+                                        class="ios-link ios-link-destructive"
+                                        onclick="return confirm('确定要删除这个时间段吗？');">
+                                    删除
+                                </button>
+                            </form>
                         </div>
                     </li>
                     {% endfor %}
@@ -51,9 +66,7 @@
                 </p>
             {% endif %}
 
-            <!-- 新增时间段表单 -->
             <form method="post" action="{{ url_for('main.add_today_segment') }}">
-                <!-- 传递营业日 -->
                 <input type="hidden" name="business_date" value="{{ business_date }}">
 
                 <div class="row g-2 align-items-end">
@@ -86,6 +99,7 @@
                             required>
                     </div>
                 </div>
+
                 <div class="d-grid gap-2 mt-3">
                     <button type="submit" class="btn btn-outline-primary btn-sm">
                         添加今日时间段
@@ -95,7 +109,6 @@
         </div>
     </div>
 
-    <!-- 今日总览卡片 -->
     <div class="card text-white mb-3" style="background-color:#2C3E50;">
         <div class="card-body">
             <h5 class="card-title">今日营业额</h5>
@@ -103,65 +116,57 @@
         </div>
     </div>
 
-    <!-- 三小卡片：客数 / 桌数 / 客单价 -->
-    <div class="row text-center mb-3">
-        <div class="col">
-            <div class="card p-2 shadow-sm">
-                <div class="small text-muted">客数</div>
-                <div class="fs-5 fw-bold">{{ summary.total_customers }} 人</div>
-            </div>
+    <div class="metrics-grid mb-3">
+        <div class="card metrics-card text-center">
+            <div class="small text-muted">客数</div>
+            <div class="fs-5 fw-bold">{{ summary.total_customers }} 人</div>
         </div>
         <div class="col">
-            <div class="card p-2 shadow-sm">
+            <div class="card metrics-card text-center">
                 <div class="small text-muted">桌数</div>
                 <div class="fs-5 fw-bold">{{ summary.total_tables }} 桌</div>
             </div>
         </div>
         <div class="col">
-            <div class="card p-2 shadow-sm">
+            <div class="card metrics-card text-center">
                 <div class="small text-muted">客单价</div>
                 <div class="fs-5 fw-bold">¥ {{ summary.avg_per_customer }}</div>
             </div>
         </div>
     </div>
 
-    <!-- 各支付方式合计 -->
     <h6 class="mb-2">按支付方式统计</h6>
-    <div class="row row-cols-2 g-2 mb-3">
+    <div class="payment-grid mb-3">
         {% for p in payment_summary %}
-        <div class="col">
-            <div class="card p-2 shadow-sm">
-                <div class="small text-muted">{{ p.label }}</div>
-                <div class="fw-bold">¥ {{ p.amount }}</div>
-            </div>
+        <div class="card payment-card">
+            <div class="payment-label">{{ p.label }}</div>
+            <div class="payment-amount">¥ {{ p.amount }}</div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- 今日食物贩卖统计 -->
-    <div class="card mb-3 shadow-sm">
+    <div class="card food-card mb-3 shadow-sm">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="card-subtitle text-muted mb-0">今日食物贩卖</h6>
                 <a href="{{ url_for('main.edit_food_sales', date=business_date) }}"
-                   class="small text-decoration-none"
+                   class="ios-link"
                    data-transition="tab">
-                    编辑 &raquo;
+                    编辑 »
                 </a>
             </div>
 
-            <ul class="list-group">
+            <ul class="list-unstyled mb-0">
                 {% for item in food_items %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>{{ item.label }}</span>
-                    <span class="fw-bold">{{ item.quantity }} 份</span>
+                <li class="food-row">
+                    <span class="food-name">{{ item.label }}</span>
+                    <span class="food-qty">{{ item.quantity }} 份</span>
                 </li>
                 {% endfor %}
             </ul>
         </div>
     </div>
 
-    <!-- 新建单据按钮 -->
     <div class="d-grid mb-4">
         <a href="{{ url_for('main.input_slip', date=business_date) }}"
            class="btn btn-primary btn-lg fw-bold"
@@ -170,7 +175,6 @@
         </a>
     </div>
 
-    <!-- 今日单据标题 + 日报入口 -->
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">今日单据</h5>
         <a href="{{ url_for('main.report', date=business_date) }}"
@@ -180,7 +184,6 @@
         </a>
     </div>
 
-    <!-- 单据列表 -->
     <ul class="list-group mb-5">
         {% for slip in slips %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -192,7 +195,6 @@
                 <span class="ms-2">{{ slip.people }}人</span>
                 <span class="ms-2">¥{{ slip.amount }}</span>
 
-                <!-- 支付方式标签（简写） -->
                 <span class="ms-2 small text-muted">
                     {% if slip.payment_method == 'cash' %}现金{% endif %}
                     {% if slip.payment_method == 'credit' %}クレカ{% endif %}
@@ -203,7 +205,7 @@
             </div>
             <div class="text-end">
                 <div class="text-muted small">{{ slip.time }}</div>
-                <a href="{{ url_for('main.edit_slip', slip_id=slip.id) }}"
+                <a href="{{ url_for('main.edit_slip_view', slip_id=slip.id) }}"
                    class="small text-decoration-none"
                    data-transition="tab">
                     编辑

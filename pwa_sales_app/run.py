@@ -2,7 +2,7 @@
 from flask import Flask
 from views.main_views import main_bp
 from database.db import init_db
-
+init_db()
 
 def create_app() -> Flask:
     """

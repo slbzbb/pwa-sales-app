@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <span class="navbar-brand mb-0 h5">Performance 业绩分析</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4 mb-5">
+
+    <!-- 折线图 -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-subtitle text-muted mb-2">
+                最近 7 天 · 营业额 / 客数 趋势
+            </h6>
+            <div class="chart-container">
+                <canvas id="salesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 条形图 -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-subtitle text-muted mb-2">
+                最近 7 天 · 食物贩卖总量
+            </h6>
+            <div class="chart-container">
+                <canvas id="foodChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  const LINE_LABELS = {{ line_labels | tojson }};
+  const LINE_SALES = {{ line_sales | tojson }};
+  const LINE_CUSTOMERS = {{ line_customers | tojson }};
+
+  const BAR_LABELS = {{ bar_labels | tojson }};
+  const BAR_VALUES = {{ bar_values | tojson }};
+
+  new Chart(document.getElementById('salesChart'), {
+    type: 'line',
+    data: {
+      labels: LINE_LABELS,
+      datasets: [
+        {
+          label: '营业额 (¥)',
+          data: LINE_SALES,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 3,
+        },
+        {
+          label: '客数 (人)',
+          data: LINE_CUSTOMERS,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 3,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' }},
+      scales: { y: { beginAtZero: true }}
+    }
+  });
+
+  new Chart(document.getElementById('foodChart'), {
+    type: 'bar',
+    data: {
+      labels: BAR_LABELS,
+      datasets: [{
+        label: '份数',
+        data: BAR_VALUES,
+        borderRadius: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }},
+      scales: { y: { beginAtZero: true }}
+    }
+  });
+</script>
+
+{% endblock %}

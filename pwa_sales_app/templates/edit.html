@@ -10,9 +10,8 @@
 
 <div class="container mt-4 mb-5">
 
-    <form method="post" action="{{ url_for('main.edit_slip', slip_id=slip.id) }}">
+    <form method="post" action="{{ url_for('main.edit_slip_view', slip_id=slip.id) }}">
 
-        <!-- 桌号 -->
         <div class="mb-3">
             <label for="table" class="form-label">桌号</label>
             <input
@@ -24,7 +23,6 @@
                 placeholder="例如：A3 / 5 等">
         </div>
 
-        <!-- 人数 -->
         <div class="mb-3">
             <label for="people" class="form-label">人数</label>
             <input
@@ -37,7 +35,6 @@
                 required>
         </div>
 
-        <!-- 金额 -->
         <div class="mb-3">
             <label for="amount" class="form-label">金额（日元）</label>
             <input
@@ -61,9 +58,8 @@
         </div>
     </form>
 
-    <!-- 删除按钮（单独的 POST 表单） -->
     <form method="post"
-          action="{{ url_for('main.delete_slip_route', slip_id=slip.id) }}"
+          action="{{ url_for('main.delete_slip_view', slip_id=slip.id) }}"
           class="mt-3">
         <button type="submit"
                 class="btn btn-outline-danger w-100"

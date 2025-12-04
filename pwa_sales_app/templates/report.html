@@ -2,56 +2,40 @@
 {% block content %}
 
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
-    <a href="{{ url_for('main.index') }}" class="btn btn-link text-decoration-none">&larr; 返回</a>
+    <a href="{{ url_for('main.index', date=slip_date) }}"
+       class="btn btn-link text-decoration-none"
+       data-transition="back">&larr; 返回</a>
     <span class="navbar-brand mb-0 h5">营业日报</span>
     <span></span>
 </nav>
 
-<div class="container mt-3 mb-5">
+<div class="container mt-4 mb-5">
 
-    <!-- 日期选择 -->
-    <form class="row g-2 align-items-end mb-3" method="get" action="{{ url_for('main.report') }}">
-        <div class="col-7">
-            <label for="date" class="form-label">选择日期</label>
-            <input
-                type="date"
-                id="date"
-                name="date"
-                class="form-control"
-                value="{{ slip_date }}"
-            >
-        </div>
-        <div class="col-5">
-            <button type="submit" class="btn btn-primary w-100">
-                显示日报
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="small text-muted">营业日</div>
+        <form method="get"
+              action="{{ url_for('main.report') }}"
+              class="d-flex align-items-center">
+            <input type="date"
+                   name="date"
+                   class="form-control form-control-sm"
+                   value="{{ slip_date }}">
+            <button class="btn btn-outline-secondary btn-sm ms-2" type="submit">
+                切换
             </button>
-        </div>
-    </form>
-
-    <!-- 最近有记录的日期 -->
-    {% if recent_dates %}
-    <div class="mb-3">
-        <div class="small text-muted mb-1">最近有记录的日期：</div>
-        <div class="d-flex flex-wrap gap-2">
-            {% for d in recent_dates %}
-                <a href="{{ url_for('main.report', date=d) }}"
-                    class="badge rounded-pill {% if d == slip_date %}bg-primary{% else %}bg-secondary{% endif %}">
-                    {{ d }}
-                </a>
-            {% endfor %}
-        </div>
+        </form>
     </div>
-    {% endif %}
 
-    <!-- 汇总卡片 -->
     <div class="card text-white mb-3" style="background-color:#2C3E50;">
         <div class="card-body">
-            <h6 class="card-subtitle mb-1">日报日期：{{ slip_date }}</h6>
-            <h4 class="card-title mb-0">营业额合计：¥ {{ summary.total_sales }}</h4>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0">营业额合计</h6>
+                <span class="small text-white-50">{{ slip_date }}</span>
+            </div>
+            <h2 class="fw-bold mb-0">¥ {{ summary.total_sales }}</h2>
         </div>
     </div>
 
-    <!-- 三个小统计 -->
     <div class="row text-center mb-3">
         <div class="col">
             <div class="card p-2 shadow-sm">
@@ -73,9 +57,63 @@
         </div>
     </div>
 
-    <!-- 单据列表 -->
-    <h6 class="mb-2">当日单据</h6>
-    <ul class="list-group mb-5">
+    <h6 class="mb-2">按支付方式统计</h6>
+    <div class="row row-cols-2 g-2 mb-3">
+        {% for p in payment_summary %}
+        <div class="col">
+            <div class="card p-2 shadow-sm">
+                <div class="small text-muted">{{ p.label }}</div>
+                <div class="fw-bold">¥ {{ p.amount }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="card-subtitle text-muted mb-0">食物贩卖统计</h6>
+                <a href="{{ url_for('main.edit_food_sales', date=slip_date) }}"
+                   class="small text-decoration-none"
+                   data-transition="tab">
+                    编辑今日食物 &raquo;
+                </a>
+            </div>
+            <ul class="list-group">
+                {% for item in food_items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>{{ item.label }}</span>
+                    <span class="fw-bold">{{ item.quantity }} 份</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-subtitle text-muted mb-2">负责时间段</h6>
+            {% if segments %}
+                <ul class="list-group">
+                    {% for seg in segments %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">{{ seg.start_time }} - {{ seg.end_time }}</span>
+                            <span class="ms-2">{{ seg.staff_name }}</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="small text-muted mb-0">
+                    该营业日还没有记录负责时间段。
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <h6 class="mb-2">单据列表</h6>
+    <ul class="list-group mb-4">
         {% for slip in slips %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>
@@ -85,21 +123,51 @@
                 {% endif %}
                 <span class="ms-2">{{ slip.people }}人</span>
                 <span class="ms-2">¥{{ slip.amount }}</span>
+                <span class="ms-2 small text-muted">
+                    {% if slip.payment_method == 'cash' %}现金{% endif %}
+                    {% if slip.payment_method == 'credit' %}クレカ{% endif %}
+                    {% if slip.payment_method == 'wechat' %}WeChat{% endif %}
+                    {% if slip.payment_method == 'paypay' %}PayPay{% endif %}
+                    {% if slip.payment_method == 'alipay' %}支付宝{% endif %}
+                </span>
             </div>
             <div class="text-end">
                 <div class="text-muted small">{{ slip.time }}</div>
-                <a href="{{ url_for('main.edit_slip', slip_id=slip.id) }}"
-                   class="small text-decoration-none">
-                    编辑
-                </a>
+                <div>
+                    <a href="{{ url_for('main.edit_slip_view', slip_id=slip.id) }}"
+                       class="small text-decoration-none me-2">
+                        编辑
+                    </a>
+                    <form method="post"
+                          action="{{ url_for('main.delete_slip_view', slip_id=slip.id) }}"
+                          class="d-inline">
+                        <button type="submit"
+                                class="btn btn-link btn-sm text-danger text-decoration-none"
+                                onclick="return confirm('确定要删除这条单据吗？');">
+                            删除
+                        </button>
+                    </form>
+                </div>
             </div>
         </li>
         {% else %}
         <li class="list-group-item text-muted">
-            该日期暂无记录。
+            该营业日还没有单据。
         </li>
         {% endfor %}
     </ul>
+
+    <div class="mb-5">
+        <h6 class="mb-2">最近有记录的营业日</h6>
+        <div class="d-flex flex-wrap gap-2">
+            {% for d in recent_dates %}
+            <a href="{{ url_for('main.report', date=d) }}"
+               class="btn btn-outline-secondary btn-sm {% if d == slip_date %}active{% endif %}">
+                {{ d }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
 
 </div>
 
