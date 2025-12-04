@@ -1,6 +1,8 @@
 # views/main_views.py
 from datetime import datetime, date
 from typing import Dict, List, Optional
+import csv # <-- 新增导入
+from io import StringIO # <-- 新增导入
 
 from flask import (
     Blueprint,
@@ -8,6 +10,7 @@ from flask import (
     request,
     redirect,
     url_for,
+    make_response, # <-- 新增导入
 )
 
 from database.db import (
@@ -16,7 +19,7 @@ from database.db import (
     insert_slip,
     update_slip,
     delete_slip,
-    get_connection,          # 暂时没用到，但留下也没问题
+    get_connection,
     get_recent_dates,
     get_payment_summary_by_date,
     get_food_sales,
@@ -28,6 +31,7 @@ from database.db import (
     get_segment,
     update_segment,
     delete_segment,
+    get_all_slips, # <-- 新增导入 (db.py 需实现)
 )
 
 main_bp = Blueprint("main", __name__)
@@ -71,14 +75,14 @@ def index():
     payment_summary = get_payment_summary_by_date(business_date)
 
     # 食物贩卖
-    food_raw = get_food_sales(business_date)
+    food_raw = get_food_sales(business_date) or {} # <-- 修复 AttributeError: 确保 food_raw 为字典
     food_items = [
-        {"key": "steak",       "label": "牛排",   "quantity": food_raw["steak"]},
-        {"key": "beef_cube",   "label": "牛肉粒", "quantity": food_raw["beef_cube"]},
-        {"key": "beef_skewer", "label": "牛肉串", "quantity": food_raw["beef_skewer"]},
-        {"key": "burger",      "label": "汉堡",   "quantity": food_raw["burger"]},
-        {"key": "sandwich",    "label": "三明治", "quantity": food_raw["sandwich"]},
-        {"key": "shrimp",      "label": "虾",     "quantity": food_raw["shrimp"]},
+        {"key": "steak",       "label": "牛排",   "quantity": food_raw.get("steak", 0)},
+        {"key": "beef_cube",   "label": "牛肉粒", "quantity": food_raw.get("beef_cube", 0)},
+        {"key": "beef_skewer", "label": "牛肉串", "quantity": food_raw.get("beef_skewer", 0)},
+        {"key": "burger",      "label": "汉堡",   "quantity": food_raw.get("burger", 0)},
+        {"key": "sandwich",    "label": "三明治", "quantity": food_raw.get("sandwich", 0)},
+        {"key": "shrimp",      "label": "虾",     "quantity": food_raw.get("shrimp", 0)},
     ]
 
     # 负责人时间段
@@ -145,7 +149,7 @@ def input_slip():
 # 编辑 / 删除 单据
 # ===========================
 @main_bp.route("/slips/<int:slip_id>/edit", methods=["GET", "POST"])
-def edit_slip_view(slip_id: int):
+def edit_slip_view(slip_id: int): # <-- 路由函数名为 edit_slip_view
     slip = get_slip(slip_id)
     if not slip:
         return redirect(url_for("main.index"))
@@ -156,7 +160,7 @@ def edit_slip_view(slip_id: int):
         table_raw = request.form.get("table", "").strip()
         people_raw = request.form.get("people", "").strip()
         amount_raw = request.form.get("amount", "").strip()
-        payment_method = request.form.get("payment_method") or "cash"
+        payment_method = slip["payment_method"] # edit.html 缺失 payment_method 字段，使用原值
 
         table_name: Optional[str] = table_raw or None
         try:
@@ -168,25 +172,19 @@ def edit_slip_view(slip_id: int):
         except ValueError:
             amount = 0
 
-        # 由于您的编辑表单（edit.html）没有提供 payment_method 字段，
-        # 这里的 update_slip 暂时无法更新支付方式，但为了保持功能完整性，
-        # 如果需要更新 payment_method，需要修改 edit.html 模板。
-        # 暂时使用一个默认值（不影响核心业务逻辑）
         update_slip(
             slip_id=slip_id,
             table_name=table_name,
             people=people,
             amount=amount,
-            # 这里的 payment_method 如果没从表单来，可能导致问题。
-            # 暂时保持现有逻辑，但请注意 edit.html 中缺少 payment_method 字段。
-            payment_method=slip["payment_method"],
+            payment_method=payment_method,
         )
 
         return redirect(url_for("main.index", date=business_date))
 
     # GET
     return render_template(
-        "edit.html",   # <--- 修复点 1：将 "edit_slip.html" 改为 "edit.html"
+        "edit.html",   # <-- 修复模板名称引用
         slip=slip,
         active_tab="home",
     )
@@ -211,15 +209,17 @@ def report():
     slips = get_slips_by_date(business_date)
     summary = calculate_summary(slips)
     payment_summary = get_payment_summary_by_date(business_date)
-    food_raw = get_food_sales(business_date)
+    
+    # 获取食物贩卖数据 (使用 .get() 应对 NoneType)
+    food_raw = get_food_sales(business_date) or {}
 
     food_items = [
-        {"label": "牛排",   "quantity": food_raw["steak"]},
-        {"label": "牛肉粒", "quantity": food_raw["beef_cube"]},
-        {"label": "牛肉串", "quantity": food_raw["beef_skewer"]},
-        {"label": "汉堡",   "quantity": food_raw["burger"]},
-        {"label": "三明治", "quantity": food_raw["sandwich"]},
-        {"label": "虾",     "quantity": food_raw["shrimp"]},
+        {"label": "牛排",   "quantity": food_raw.get("steak", 0)},
+        {"label": "牛肉粒", "quantity": food_raw.get("beef_cube", 0)},
+        {"label": "牛肉串", "quantity": food_raw.get("beef_skewer", 0)},
+        {"label": "汉堡",   "quantity": food_raw.get("burger", 0)},
+        {"label": "三明治", "quantity": food_raw.get("sandwich", 0)},
+        {"label": "虾",     "quantity": food_raw.get("shrimp", 0)},
     ]
     
     # 负责人时间段
@@ -228,10 +228,11 @@ def report():
     # 最近有记录的营业日
     recent_dates = get_recent_dates(limit=7)
 
+
     return render_template(
         "report.html",
         active_tab="report",
-        slip_date=business_date, # report.html 使用 slip_date
+        slip_date=business_date,
         summary=summary,
         slips=slips,
         payment_summary=payment_summary,
@@ -279,18 +280,18 @@ def edit_food_sales():
         return redirect(url_for("main.index", date=business_date))
 
     # GET
-    food_raw = get_food_sales(business_date)
+    food_raw = get_food_sales(business_date) or {} # <-- 确保为字典
     items = [
-        {"key": "steak",       "label": "牛排",   "quantity": food_raw["steak"]},
-        {"key": "beef_cube",   "label": "牛肉粒", "quantity": food_raw["beef_cube"]},
-        {"key": "beef_skewer", "label": "牛肉串", "quantity": food_raw["beef_skewer"]},
-        {"key": "burger",      "label": "汉堡",   "quantity": food_raw["burger"]},
-        {"key": "sandwich",    "label": "三明治", "quantity": food_raw["sandwich"]},
-        {"key": "shrimp",      "label": "虾",     "quantity": food_raw["shrimp"]},
+        {"key": "steak",       "label": "牛排",   "quantity": food_raw.get("steak", 0)},
+        {"key": "beef_cube",   "label": "牛肉粒", "quantity": food_raw.get("beef_cube", 0)},
+        {"key": "beef_skewer", "label": "牛肉串", "quantity": food_raw.get("beef_skewer", 0)},
+        {"key": "burger",      "label": "汉堡",   "quantity": food_raw.get("burger", 0)},
+        {"key": "sandwich",    "label": "三明治", "quantity": food_raw.get("sandwich", 0)},
+        {"key": "shrimp",      "label": "虾",     "quantity": food_raw.get("shrimp", 0)},
     ]
 
     return render_template(
-        "food.html",   # <--- 修复点 2：将 "edit_food_sales.html" 改为 "food.html"
+        "food.html",   # <-- 修复模板名称引用
         active_tab="home",
         business_date=business_date,
         items=items,
@@ -300,8 +301,8 @@ def edit_food_sales():
 # ===========================
 # 负责人时间段：新增 / 编辑 / 删除
 # ===========================
-@main_bp.route("/segments/add_today", methods=["POST"])
-def add_today_segment():
+@main_bp.route("/segments/add", methods=["POST"])
+def add_segment(): # <-- 修复路由函数名，并简化逻辑
     business_date = request.form.get("business_date") or date.today().strftime("%Y-%m-%d")
     start_time = request.form.get("start_time", "").strip()
     end_time = request.form.get("end_time", "").strip()
@@ -314,7 +315,7 @@ def add_today_segment():
 
 
 @main_bp.route("/segments/<int:segment_id>/edit", methods=["GET", "POST"])
-def edit_segment_view(segment_id: int):
+def edit_segment_view(segment_id: int): # <-- 路由函数名为 edit_segment_view
     seg = get_segment(segment_id)
     if not seg:
         return redirect(url_for("main.index"))
@@ -326,8 +327,6 @@ def edit_segment_view(segment_id: int):
         update_segment(segment_id, start_time, end_time, staff_name)
         return redirect(url_for("main.index", date=seg["business_date"]))
 
-    # 注意：edit_segment.html 中 action="{{ url_for('main.edit_segment', ... ) }}"
-    # 如果没有修改 edit_segment.html，这里可能还会报错。建议检查该文件中的路由名称。
     return render_template(
         "edit_segment.html",
         segment=seg,
@@ -358,12 +357,12 @@ def performance():
     food_totals = get_food_totals_last_days(limit=7)
     bar_labels = ["牛排", "牛肉粒", "牛肉串", "汉堡", "三明治", "虾"]
     bar_values = [
-        food_totals["steak"],
-        food_totals["beef_cube"],
-        food_totals["beef_skewer"],
-        food_totals["burger"],
-        food_totals["sandwich"],
-        food_totals["shrimp"],
+        food_totals.get("steak", 0),
+        food_totals.get("beef_cube", 0),
+        food_totals.get("beef_skewer", 0),
+        food_totals.get("burger", 0),
+        food_totals.get("sandwich", 0),
+        food_totals.get("shrimp", 0),
     ]
 
     return render_template(
@@ -383,3 +382,66 @@ def performance():
 @main_bp.route("/settings")
 def settings():
     return render_template("settings.html", active_tab="settings")
+
+# ===========================
+# 数据导出 CSV  <-- 新增视图函数
+# ===========================
+@main_bp.route("/export/csv")
+def export_data_csv():
+    """
+    导出所有单据数据为 CSV 文件
+    """
+    slips_data = get_all_slips()
+
+    # 1. 设置 CSV 头部 (Header)
+    header = [
+        "ID",
+        "营业日",
+        "桌号",
+        "人数",
+        "金额(日元)",
+        "支付方式",
+        "记录时间"
+    ]
+
+    # 2. 准备数据行
+    rows = []
+    payment_map = {
+        "cash": "现金",
+        "credit": "クレジットカード",
+        "wechat": "WeChat Pay",
+        "paypay": "PayPay",
+        "alipay": "支付宝",
+    }
+    
+    for slip in slips_data:
+        # 转换支付方式的键到中文标签
+        payment_label = payment_map.get(slip["payment_method"], slip["payment_method"])
+        
+        rows.append([
+            slip["id"],
+            slip["slip_date"],
+            slip["table_name"] or "",
+            slip["people"],
+            slip["amount"],
+            payment_label,
+            slip["created_at"],
+        ])
+
+    # 3. 创建内存中的 CSV 文件 (StringIO)
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(header)
+    cw.writerows(rows)
+
+    # 4. 创建并设置 Response
+    output = make_response(si.getvalue())
+
+    current_date = date.today().strftime("%Y%m%d")
+    filename = f"sales_export_{current_date}.csv"
+
+    # 关键：设置正确的 Content-Disposition 和 Content-type
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-type"] = "text/csv; charset=utf-8"
+
+    return output

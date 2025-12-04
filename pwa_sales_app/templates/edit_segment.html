@@ -2,7 +2,7 @@
 {% block content %}
 
 <nav class="navbar navbar-light bg-white shadow-sm px-3">
-    <a href="{{ url_for('main.index', date=segment.slip_date) }}"
+    <a href="{{ url_for('main.index', date=segment.business_date) }}"
         class="btn btn-link text-decoration-none"
         data-transition="back">&larr; 返回</a>
     <span class="navbar-brand mb-0 h5">编辑负责时间段</span>
@@ -11,11 +11,11 @@
 
 <div class="container mt-4 mb-5">
     <p class="small text-muted">
-        营业日：<strong>{{ segment.slip_date }}</strong>
+        营业日：<strong>{{ segment.business_date }}</strong>
     </p>
 
     <form method="post"
-            action="{{ url_for('main.edit_segment', segment_id=segment.id) }}">
+            action="{{ url_for('main.edit_segment_view', segment_id=segment.id) }}">
 
         <div class="mb-3">
             <label class="form-label small text-muted">开始时间</label>

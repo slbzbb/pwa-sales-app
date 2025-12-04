@@ -155,6 +155,25 @@ def get_slips_by_date(slip_date: str) -> List[Dict[str, Any]]:
     conn.close()
     return [dict(r) for r in rows]
 
+# --- 新增函数：用于 CSV 导出 ---
+def get_all_slips() -> List[Dict[str, Any]]:
+    """
+    获取 slips 表中的所有单据，按日期和 ID 排序
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT *
+        FROM slips
+        ORDER BY slip_date DESC, id DESC
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+# ------------------------------
+
 
 def get_recent_dates(limit: int = 7) -> List[str]:
     """

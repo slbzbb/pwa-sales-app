@@ -66,7 +66,7 @@
                 </p>
             {% endif %}
 
-            <form method="post" action="{{ url_for('main.add_today_segment') }}">
+            <form method="post" action="{{ url_for('main.add_segment') }}">
                 <input type="hidden" name="business_date" value="{{ business_date }}">
 
                 <div class="row g-2 align-items-end">
@@ -121,17 +121,13 @@
             <div class="small text-muted">客数</div>
             <div class="fs-5 fw-bold">{{ summary.total_customers }} 人</div>
         </div>
-        <div class="col">
-            <div class="card metrics-card text-center">
-                <div class="small text-muted">桌数</div>
-                <div class="fs-5 fw-bold">{{ summary.total_tables }} 桌</div>
-            </div>
+        <div class="card metrics-card text-center">
+            <div class="small text-muted">桌数</div>
+            <div class="fs-5 fw-bold">{{ summary.total_tables }} 桌</div>
         </div>
-        <div class="col">
-            <div class="card metrics-card text-center">
-                <div class="small text-muted">客单价</div>
-                <div class="fs-5 fw-bold">¥ {{ summary.avg_per_customer }}</div>
-            </div>
+        <div class="card metrics-card text-center">
+            <div class="small text-muted">客单价</div>
+            <div class="fs-5 fw-bold">¥ {{ summary.avg_per_customer }}</div>
         </div>
     </div>
 
