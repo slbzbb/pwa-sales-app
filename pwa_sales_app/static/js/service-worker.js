@@ -1,12 +1,14 @@
-    const CACHE_NAME = 'pwa-sales-app-v1';
+const CACHE_NAME = 'pwa-sales-app-v1';
 
-    const URLS_TO_CACHE = [
+const URLS_TO_CACHE = [
     '/',
     '/input',
     '/report',
     '/settings',
+    '/performance',
     '/static/css/style.css',
     '/static/js/main.js',
+    '/static/js/service-worker.js',
     '/static/image/icon-192.png',
     '/static/image/icon-512.png'
     ];
@@ -20,7 +22,11 @@
     self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(keys =>
-        Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
+        Promise.all(
+            keys
+            .filter(key => key !== CACHE_NAME)
+            .map(key => caches.delete(key))
+        )
         )
     );
     });

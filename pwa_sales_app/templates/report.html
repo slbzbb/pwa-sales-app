@@ -71,7 +71,7 @@
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="card-subtitle text-muted mb-0">食物贩卖统计</h6>
                 <a href="{{ url_for('main.edit_food_sales', date=slip_date) }}"
-                   class="ios-link"
+                   class="small text-decoration-none"
                    data-transition="tab">
                     编辑今日食物 &raquo;
                 </a>
@@ -134,8 +134,7 @@
                 <div class="text-muted small">{{ slip.time }}</div>
                 <div>
                     <a href="{{ url_for('main.edit_slip_view', slip_id=slip.id) }}"
-                       class="small text-decoration-none me-2"
-                       data-transition="tab">
+                       class="small text-decoration-none me-2">
                         编辑
                     </a>
                     <form method="post"

@@ -2,6 +2,9 @@
 import sqlite3
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from datetime import datetime
+
+from werkzeug.security import generate_password_hash  # 创建默认账号密码哈希
 
 DB_PATH = Path(__file__).resolve().parent / "sales.db"
 
@@ -62,6 +65,18 @@ def init_db() -> None:
             start_time TEXT NOT NULL,        -- HH:MM
             end_time TEXT NOT NULL,          -- HH:MM
             staff_name TEXT NOT NULL
+        )
+        """
+    )
+
+    # 用户表（登录系统）
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
         )
         """
     )
@@ -156,10 +171,9 @@ def get_slips_by_date(slip_date: str) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-# --- 新增函数：用于 CSV 导出 ---
 def get_all_slips() -> List[Dict[str, Any]]:
     """
-    获取 slips 表中的所有单据，按日期和 ID 排序
+    获取 slips 表中的所有单据，按日期和 ID 排序（用于 CSV 导出）
     """
     conn = get_connection()
     cur = conn.cursor()
@@ -173,7 +187,6 @@ def get_all_slips() -> List[Dict[str, Any]]:
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
-# ------------------------------
 
 
 def get_recent_dates(limit: int = 7) -> List[str]:
@@ -462,23 +475,105 @@ def get_daily_sales_and_customers(limit: int = 7) -> List[Dict[str, Any]]:
 
 
 # ===========================
-# 清空所有业务数据（危险操作）
+# users: 登录用户
 # ===========================
-def clear_all_data() -> None:
+def create_user(username: str, password_hash: str, created_at: str) -> None:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO users (username, password_hash, created_at)
+        VALUES (?, ?, ?)
+        """,
+        (username, password_hash, created_at),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE username = ?",
+        (username,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE id = ?",
+        (user_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def ensure_default_users() -> None:
     """
-    删除所有 slips / food_sales / segments 的记录，但不删表结构。
+    若 users 表为空，则创建：
+      - 正常账号：coffee01 / tabako01
+      - 后门账号：backup99 / reset99
     """
     conn = get_connection()
     cur = conn.cursor()
 
-    # 按顺序清空
+    cur.execute("SELECT COUNT(*) AS c FROM users")
+    row = cur.fetchone()
+    count = row["c"] if row else 0
+
+    if count == 0:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # 正常账号
+        cur.execute(
+            """
+            INSERT INTO users (username, password_hash, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (
+                "coffee01",
+                generate_password_hash("tabako01"),
+                now_str,
+            ),
+        )
+
+        # 后门账号
+        cur.execute(
+            """
+            INSERT INTO users (username, password_hash, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (
+                "backup99",
+                generate_password_hash("reset99"),
+                now_str,
+            ),
+        )
+
+        conn.commit()
+
+    conn.close()
+
+
+# ===========================
+# 清空业务数据（不动用户）
+# ===========================
+def clear_all_business_data() -> None:
+    """
+    删除所有营业数据：单据、食物统计、负责人时间段。
+    不删除 users 表里的账号。
+    """
+    conn = get_connection()
+    cur = conn.cursor()
     cur.execute("DELETE FROM slips")
     cur.execute("DELETE FROM food_sales")
     cur.execute("DELETE FROM segments")
-
-    conn.commit()
-
-    # 可选：释放空间
-    cur.execute("VACUUM")
     conn.commit()
     conn.close()

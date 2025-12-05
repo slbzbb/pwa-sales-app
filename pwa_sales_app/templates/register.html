@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <span class="navbar-brand mb-0 h5">注册账号</span>
+    <span></span>
+</nav>
+
+<div class="container mt-4 mb-5">
+    {% if error %}
+    <div class="alert alert-danger small py-2" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('main.register') }}">
+                <div class="mb-3">
+                    <label class="form-label small text-muted">账号</label>
+                    <input type="text"
+                           name="username"
+                           class="form-control"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small text-muted">密码</label>
+                    <input type="password"
+                           name="password"
+                           class="form-control"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small text-muted">确认密码</label>
+                    <input type="password"
+                           name="password2"
+                           class="form-control"
+                           required>
+                </div>
+
+                <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                        注册并登录
+                    </button>
+                </div>
+            </form>
+
+            <p class="small text-muted mt-3 mb-0 text-center">
+                已经有账号？
+                <a href="{{ url_for('main.login') }}">去登录</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

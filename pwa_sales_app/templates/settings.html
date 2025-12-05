@@ -11,28 +11,40 @@
 
 <div class="container mt-4 mb-5">
 
-    {# 清空成功提示 #}
+    {# 清理成功提示 #}
     {% if cleared %}
     <div class="alert alert-success small py-2" role="alert">
-        所有营业记录已清空。数据库已恢复为初始状态。
+        所有营业记录已清空。现在数据库是干净的，可以重新开始记录。
     </div>
     {% endif %}
 
-    <!-- 应用信息 -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">账号信息</h6>
+            <div class="d-flex justify-content-between align-items-center">
+                <span>当前登录账号</span>
+                <span class="text-muted small">{{ username or '（未登录）' }}</span>
+            </div>
+            <div class="d-grid gap-2 mt-3">
+                <a href="{{ url_for('main.logout') }}"
+                   class="btn btn-outline-secondary w-100">
+                    退出登录
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">应用信息</h6>
-
             <div class="d-flex justify-content-between align-items-center">
                 <span>应用名称</span>
                 <span class="text-muted small">营业额记录（PWA）</span>
             </div>
-
             <div class="d-flex justify-content-between align-items-center mt-2">
                 <span>版本</span>
-                <span class="text-muted small">v0.1.0</span>
+                <span class="text-muted small">v0.2.0</span>
             </div>
-
             <div class="d-flex justify-content-between align-items-center mt-2">
                 <span>开发者</span>
                 <span class="text-muted small">沈猪宝</span>
@@ -40,55 +52,40 @@
         </div>
     </div>
 
-
-    <!-- 数据管理 -->
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">数据管理</h6>
-
-            <!-- 所有明细导出 -->
+            
+            <!-- 导出 CSV -->
             <a href="{{ url_for('main.export_data_csv') }}"
-               class="btn btn-outline-success w-100 mb-2 fw-bold"
+               class="btn btn-outline-success w-100 mb-3 fw-bold"
                target="_blank">
-                导出所有单据明细（CSV）
-            </a>
-
-            <!-- 日报汇总导出 -->
-            <a href="{{ url_for('main.export_daily_report_csv') }}"
-               class="btn btn-outline-primary w-100 mb-2 fw-bold"
-               target="_blank">
-                导出【日报】汇总（CSV）
-            </a>
-
-            <!-- 月报汇总导出 -->
-            <a href="{{ url_for('main.export_monthly_report_csv') }}"
-               class="btn btn-outline-primary w-100 mb-3 fw-bold"
-               target="_blank">
-                导出【月报】汇总（CSV）
+                导出所有单据数据 (CSV)
             </a>
 
             <!-- 一键清空数据 -->
             <form method="post"
                   action="{{ url_for('main.clear_data_view') }}"
-                  onsubmit="return confirm('⚠️注意：此操作会删除所有单据、食物统计、时间段记录，且不可恢复！\n\n确定继续吗？');">
-                <button type="submit" class="btn btn-outline-danger w-100 fw-bold">
+                  onsubmit="return confirm('⚠️ 注意：这会删除所有单据、食物统计和负责时间段，无法恢复。\\n\\n确定要清空所有记录吗？');">
+                <button type="submit"
+                        class="btn btn-outline-danger w-100 fw-bold">
                     清空所有记录（不可恢复）
                 </button>
             </form>
 
             <p class="small text-muted mt-2 mb-0">
-                建议先导出 CSV 备份后，再进行清空操作。
+                建议在导出并备份 CSV 后，再使用“清空所有记录”。
+                此操作只删除业务数据，不会删除账号。
             </p>
         </div>
     </div>
 
-
-    <!-- 外观 -->
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">外观</h6>
             <p class="small text-muted mb-0">
-                应用会自动跟随系统浅色 / 深色模式。
+                应用会自动跟随系统的浅色 / 深色模式。
+                若想切换，请在手机的「设置 → 显示与亮度」中更改。
             </p>
         </div>
     </div>
