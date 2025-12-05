@@ -155,6 +155,7 @@ def get_slips_by_date(slip_date: str) -> List[Dict[str, Any]]:
     conn.close()
     return [dict(r) for r in rows]
 
+
 # --- 新增函数：用于 CSV 导出 ---
 def get_all_slips() -> List[Dict[str, Any]]:
     """
@@ -458,3 +459,26 @@ def get_daily_sales_and_customers(limit: int = 7) -> List[Dict[str, Any]]:
 
     rows.reverse()
     return rows
+
+
+# ===========================
+# 清空所有业务数据（危险操作）
+# ===========================
+def clear_all_data() -> None:
+    """
+    删除所有 slips / food_sales / segments 的记录，但不删表结构。
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # 按顺序清空
+    cur.execute("DELETE FROM slips")
+    cur.execute("DELETE FROM food_sales")
+    cur.execute("DELETE FROM segments")
+
+    conn.commit()
+
+    # 可选：释放空间
+    cur.execute("VACUUM")
+    conn.commit()
+    conn.close()

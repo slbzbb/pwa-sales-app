@@ -32,6 +32,7 @@ from database.db import (
     update_segment,
     delete_segment,
     get_all_slips, # <-- 新增导入 (db.py 需实现)
+    clear_all_data,
 )
 
 main_bp = Blueprint("main", __name__)
@@ -205,14 +206,25 @@ def delete_slip_view(slip_id: int):
 # ===========================
 @main_bp.route("/report")
 def report():
+    """某一天的营业日报页面"""
     business_date = request.args.get("date") or date.today().strftime("%Y-%m-%d")
+
+    # 单据列表
     slips = get_slips_by_date(business_date)
+
+    # 补上 HH:MM 时间字段，给模板用 slip.time
+    for slip in slips:
+        created_at = slip["created_at"]
+        slip["time"] = (
+            created_at[11:16] if created_at and len(created_at) >= 16 else ""
+        )
+
+    # 汇总统计
     summary = calculate_summary(slips)
     payment_summary = get_payment_summary_by_date(business_date)
-    
-    # 获取食物贩卖数据 (使用 .get() 应对 NoneType)
-    food_raw = get_food_sales(business_date) or {}
 
+    # 食物贩卖数据（没有记录时用 0）
+    food_raw = get_food_sales(business_date) or {}
     food_items = [
         {"label": "牛排",   "quantity": food_raw.get("steak", 0)},
         {"label": "牛肉粒", "quantity": food_raw.get("beef_cube", 0)},
@@ -221,13 +233,12 @@ def report():
         {"label": "三明治", "quantity": food_raw.get("sandwich", 0)},
         {"label": "虾",     "quantity": food_raw.get("shrimp", 0)},
     ]
-    
+
     # 负责人时间段
     segments = get_segments_by_date(business_date)
-    
+
     # 最近有记录的营业日
     recent_dates = get_recent_dates(limit=7)
-
 
     return render_template(
         "report.html",
@@ -381,19 +392,21 @@ def performance():
 # ===========================
 @main_bp.route("/settings")
 def settings():
-    return render_template("settings.html", active_tab="settings")
+    cleared = request.args.get("cleared") == "1"
+    return render_template("settings.html", active_tab="settings", cleared=cleared)
 
+
+#! 12月5日修改
 # ===========================
-# 数据导出 CSV  <-- 新增视图函数
+# 数据导出 CSV  (明细：所有单据)
 # ===========================
 @main_bp.route("/export/csv")
 def export_data_csv():
     """
-    导出所有单据数据为 CSV 文件
+    导出所有单据数据为 CSV 文件（明细）
     """
     slips_data = get_all_slips()
 
-    # 1. 设置 CSV 头部 (Header)
     header = [
         "ID",
         "营业日",
@@ -401,10 +414,9 @@ def export_data_csv():
         "人数",
         "金额(日元)",
         "支付方式",
-        "记录时间"
+        "记录时间",
     ]
 
-    # 2. 准备数据行
     rows = []
     payment_map = {
         "cash": "现金",
@@ -413,35 +425,229 @@ def export_data_csv():
         "paypay": "PayPay",
         "alipay": "支付宝",
     }
-    
-    for slip in slips_data:
-        # 转换支付方式的键到中文标签
-        payment_label = payment_map.get(slip["payment_method"], slip["payment_method"])
-        
-        rows.append([
-            slip["id"],
-            slip["slip_date"],
-            slip["table_name"] or "",
-            slip["people"],
-            slip["amount"],
-            payment_label,
-            slip["created_at"],
-        ])
 
-    # 3. 创建内存中的 CSV 文件 (StringIO)
+    for slip in slips_data:
+        payment_label = payment_map.get(slip["payment_method"], slip["payment_method"])
+        rows.append(
+            [
+                slip["id"],
+                slip["slip_date"],
+                slip["table_name"] or "",
+                slip["people"],
+                slip["amount"],
+                payment_label,
+                slip["created_at"],
+            ]
+        )
+
     si = StringIO()
     cw = csv.writer(si)
     cw.writerow(header)
     cw.writerows(rows)
 
-    # 4. 创建并设置 Response
     output = make_response(si.getvalue())
-
     current_date = date.today().strftime("%Y%m%d")
     filename = f"sales_export_{current_date}.csv"
-
-    # 关键：设置正确的 Content-Disposition 和 Content-type
     output.headers["Content-Disposition"] = f"attachment; filename={filename}"
     output.headers["Content-type"] = "text/csv; charset=utf-8"
-
     return output
+
+
+# ===========================
+# 新增 1：日报汇总导出 CSV
+# ===========================
+@main_bp.route("/export/daily_report_csv")
+def export_daily_report_csv():
+    """
+    每一行 = 1 个营业日 的汇总：
+    总売上 / 人数 / 桌数 / 各支付方式金额 / 各食物份数
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT
+            s.slip_date                     AS business_date,
+            SUM(s.amount)                   AS total_sales,
+            SUM(s.people)                   AS total_customers,
+            COUNT(*)                        AS total_tables,
+            SUM(CASE WHEN s.payment_method='cash'   THEN s.amount ELSE 0 END) AS cash_total,
+            SUM(CASE WHEN s.payment_method='credit' THEN s.amount ELSE 0 END) AS credit_total,
+            SUM(CASE WHEN s.payment_method='wechat' THEN s.amount ELSE 0 END) AS wechat_total,
+            SUM(CASE WHEN s.payment_method='paypay' THEN s.amount ELSE 0 END) AS paypay_total,
+            SUM(CASE WHEN s.payment_method='alipay' THEN s.amount ELSE 0 END) AS alipay_total,
+            COALESCE(f.steak,       0) AS steak,
+            COALESCE(f.beef_cube,   0) AS beef_cube,
+            COALESCE(f.beef_skewer, 0) AS beef_skewer,
+            COALESCE(f.burger,      0) AS burger,
+            COALESCE(f.sandwich,    0) AS sandwich,
+            COALESCE(f.shrimp,      0) AS shrimp
+        FROM slips s
+        LEFT JOIN food_sales f
+            ON s.slip_date = f.business_date
+        GROUP BY s.slip_date
+        ORDER BY s.slip_date ASC
+        """
+    )
+
+    rows_db = cur.fetchall()
+    conn.close()
+
+    # CSV 表头（按你要求）
+    header = [
+        "营业日",
+        "总売上",
+        "人数",
+        "桌数",
+        "总现金",
+        "总信用卡",
+        "总WeChat Pay",
+        "总PayPay",
+        "总支付宝",
+        "牛排",
+        "牛肉粒",
+        "牛肉串",
+        "汉堡",
+        "三明治",
+        "虾",
+    ]
+
+    rows = []
+    for r in rows_db:
+        rows.append(
+            [
+                r["business_date"],
+                int(r["total_sales"] or 0),
+                int(r["total_customers"] or 0),
+                int(r["total_tables"] or 0),
+                int(r["cash_total"] or 0),
+                int(r["credit_total"] or 0),
+                int(r["wechat_total"] or 0),
+                int(r["paypay_total"] or 0),
+                int(r["alipay_total"] or 0),
+                int(r["steak"] or 0),
+                int(r["beef_cube"] or 0),
+                int(r["beef_skewer"] or 0),
+                int(r["burger"] or 0),
+                int(r["sandwich"] or 0),
+                int(r["shrimp"] or 0),
+            ]
+        )
+
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(header)
+    cw.writerows(rows)
+
+    output = make_response(si.getvalue())
+    filename = f"daily_report_{date.today().strftime('%Y%m%d')}.csv"
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-type"] = "text/csv; charset=utf-8"
+    return output
+
+
+# ===========================
+# 新增 2：月报汇总导出 CSV
+# ===========================
+@main_bp.route("/export/monthly_report_csv")
+def export_monthly_report_csv():
+    """
+    每一行 = 1 个月 的汇总：
+    上面日报的项目在「月度」层面汇总
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # slips + food_sales 一起按「年月」汇总
+    cur.execute(
+        """
+        SELECT
+            strftime('%Y-%m', s.slip_date) AS ym,
+            SUM(s.amount)                  AS total_sales,
+            SUM(s.people)                  AS total_customers,
+            COUNT(*)                       AS total_tables,
+            SUM(CASE WHEN s.payment_method='cash'   THEN s.amount ELSE 0 END) AS cash_total,
+            SUM(CASE WHEN s.payment_method='credit' THEN s.amount ELSE 0 END) AS credit_total,
+            SUM(CASE WHEN s.payment_method='wechat' THEN s.amount ELSE 0 END) AS wechat_total,
+            SUM(CASE WHEN s.payment_method='paypay' THEN s.amount ELSE 0 END) AS paypay_total,
+            SUM(CASE WHEN s.payment_method='alipay' THEN s.amount ELSE 0 END) AS alipay_total,
+            SUM(COALESCE(f.steak,       0)) AS steak,
+            SUM(COALESCE(f.beef_cube,   0)) AS beef_cube,
+            SUM(COALESCE(f.beef_skewer, 0)) AS beef_skewer,
+            SUM(COALESCE(f.burger,      0)) AS burger,
+            SUM(COALESCE(f.sandwich,    0)) AS sandwich,
+            SUM(COALESCE(f.shrimp,      0)) AS shrimp
+        FROM slips s
+        LEFT JOIN food_sales f
+            ON s.slip_date = f.business_date
+        GROUP BY ym
+        ORDER BY ym ASC
+        """
+    )
+
+    rows_db = cur.fetchall()
+    conn.close()
+
+    header = [
+        "年月",
+        "总売上",
+        "人数",
+        "桌数",
+        "总现金",
+        "总信用卡",
+        "总WeChat Pay",
+        "总PayPay",
+        "总支付宝",
+        "牛排",
+        "牛肉粒",
+        "牛肉串",
+        "汉堡",
+        "三明治",
+        "虾",
+    ]
+
+    rows = []
+    for r in rows_db:
+        rows.append(
+            [
+                r["ym"],
+                int(r["total_sales"] or 0),
+                int(r["total_customers"] or 0),
+                int(r["total_tables"] or 0),
+                int(r["cash_total"] or 0),
+                int(r["credit_total"] or 0),
+                int(r["wechat_total"] or 0),
+                int(r["paypay_total"] or 0),
+                int(r["alipay_total"] or 0),
+                int(r["steak"] or 0),
+                int(r["beef_cube"] or 0),
+                int(r["beef_skewer"] or 0),
+                int(r["burger"] or 0),
+                int(r["sandwich"] or 0),
+                int(r["shrimp"] or 0),
+            ]
+        )
+
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(header)
+    cw.writerows(rows)
+
+    output = make_response(si.getvalue())
+    filename = f"monthly_report_{date.today().strftime('%Y%m%d')}.csv"
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-type"] = "text/csv; charset=utf-8"
+    return output
+
+# ===========================
+# 一键清空数据（危险操作）
+# ===========================
+@main_bp.route("/settings/clear", methods=["POST"])
+def clear_data_view():
+    """
+    清空所有业务数据，然后回到设置页。
+    """
+    clear_all_data()
+    # 带一个 ?cleared=1 回去，让页面显示“已清空”提示
+    return redirect(url_for("main.settings", cleared="1"))
